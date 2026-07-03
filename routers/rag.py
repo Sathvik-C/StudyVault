@@ -57,6 +57,10 @@ def rag_index(file_id: int):
 
     if not attachments:
         return {"message": "No PDF attachments found", "indexed": 0}
+        
+    import os
+    if not os.getenv("HF_API_TOKEN"):
+        raise HTTPException(status_code=400, detail="HF_API_TOKEN is missing in Render environment variables. Please get a free Hugging Face token and add it to Render to enable AI document indexing.")
 
     from models.config import STORAGE_DIR
     total_chunks = 0
