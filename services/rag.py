@@ -111,23 +111,15 @@ def chunk_pages(pages: list[dict], chunk_size: int = CHUNK_SIZE,
     return chunks
 
 
-# ── 3. Embedding ──────────────────────────────────────────────
-
-def _get_embedding_model():
-    """Reuse the model from semantic_search if already loaded."""
-    from services.semantic_search import _get_model
-    return _get_model()
-
+# ── 3. Embedding (via HF Inference API) ──────────────────────
 
 def embed_texts(texts: list[str]) -> Optional[np.ndarray]:
-    """Embed a list of texts, returns (N, 384) array or None."""
-    model = _get_embedding_model()
-    if model is None:
-        logger.warning("Embedding model unavailable — skipping indexing")
+    """Embed a list of texts via HF API, returns (N, 384) array or None."""
+    from services.semantic_search import _embed_via_hf_api
+    embeddings = _embed_via_hf_api(texts)
+    if embeddings is None:
+        logger.warning("HF Inference API unavailable — skipping indexing")
         return None
-
-    embeddings = model.encode(texts, show_progress_bar=False,
-                              normalize_embeddings=True)
     return np.asarray(embeddings, dtype=np.float64)
 
 
@@ -245,13 +237,11 @@ def retrieve_chunks(engine, question: str, file_id: int,
     Retrieve the most relevant chunks for a question.
     Returns list of {content, page_number, source_name, score}.
     """
-    # Embed the question
-    model = _get_embedding_model()
-    if model is None:
+    # Embed the question via HF API
+    from services.semantic_search import _embed_via_hf_api
+    q_emb = _embed_via_hf_api([question])
+    if q_emb is None:
         return []
-
-    q_emb = model.encode([question], show_progress_bar=False,
-                         normalize_embeddings=True)
     query_vec = np.asarray(q_emb[0], dtype=np.float64)
 
     # Fetch all chunks for this file

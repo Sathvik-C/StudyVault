@@ -1,11 +1,19 @@
 import os
-from sqlalchemy import create_engine, text
+import logging
+from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
+
+logger = logging.getLogger(__name__)
 
 DATABASE_URL_ENV = os.getenv("DATABASE_URL")
 
 if DATABASE_URL_ENV:
+    # Render (and some providers) use "postgres://" but SQLAlchemy
+    # requires "postgresql://". Fix it automatically.
     DATABASE_URL = DATABASE_URL_ENV
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        logger.info("Converted postgres:// → postgresql:// in DATABASE_URL")
 else:
     db_user = os.getenv("DB_USER", "postgres")
     db_password = os.getenv("DB_PASSWORD")
@@ -25,7 +33,15 @@ else:
         database=db_name,
     )
 
-engine = create_engine(DATABASE_URL)
+# Small pool for free tier (limited connections)
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=3,
+    max_overflow=2,
+    pool_timeout=30,
+    pool_recycle=300,
+    pool_pre_ping=True,
+)
 
 
 def get_engine():

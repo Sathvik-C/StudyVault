@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: studyvault
+    runtime: docker
+    repo: https://github.com/Sathvik-C/StudyVault
+    branch: main
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: HF_API_TOKEN
+        sync: false
+      - key: MAX_UPLOAD_BYTES
+        value: "52428800"
+      - key: MAX_EXTRACTED_BYTES
+        value: "1073741824"

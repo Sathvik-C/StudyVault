@@ -1,14 +1,31 @@
 import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-UPLOAD_DIR = BASE_DIR / "uploads"
-STORAGE_DIR = BASE_DIR / "storage"
+# ── Detect environment ────────────────────────────────────────
+IS_PRODUCTION = os.getenv("RENDER", "") == "true" or os.getenv("IS_PRODUCTION", "") == "true"
+
+# ── Paths ─────────────────────────────────────────────────────
+# On Render (ephemeral filesystem), use /tmp for uploads/storage
+# Locally, use project-relative directories
+if IS_PRODUCTION:
+    BASE_DIR = Path("/app")
+    UPLOAD_DIR = Path("/tmp/uploads")
+    STORAGE_DIR = Path("/tmp/storage")
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    UPLOAD_DIR = BASE_DIR / "uploads"
+    STORAGE_DIR = BASE_DIR / "storage"
 
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(200 * 1024 * 1024)))   # 200MB
 MAX_EXTRACTED_BYTES = int(os.getenv("MAX_EXTRACTED_BYTES", str(1024 * 1024 * 1024)))  # 1GB
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+# ── Hugging Face Inference API ────────────────────────────────
+HF_API_TOKEN = os.getenv("HF_API_TOKEN", "")
+HF_EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+HF_EMBED_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{HF_EMBED_MODEL}"
+EMBED_DIM = 384  # all-MiniLM-L6-v2 output dimension
 
 # ── Category keyword rules ───────────────────────────────────
 # Order matters: first match wins

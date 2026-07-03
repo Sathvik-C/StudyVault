@@ -1,49 +1,76 @@
+"""
+Semantic search using Hugging Face Inference API for embeddings.
+
+Falls back to keyword search if the API is unavailable.
+No local model loading — keeps RAM usage minimal for free-tier deployment.
+"""
+
 from __future__ import annotations
 
 import logging
+import os
 import time
 from typing import Any
 
 import numpy as np
+import requests
 from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
-_MODEL = None
-_MODEL_LOAD_ERROR: str | None = None
-_LAST_MODEL_ATTEMPT_AT = 0.0
-_MODEL_RETRY_SECONDS = 30
+# ── HF Inference API config ──────────────────────────────────
+HF_API_TOKEN = os.getenv("HF_API_TOKEN", "")
+HF_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+HF_API_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{HF_MODEL}"
+EMBED_DIM = 384
+
+_LAST_API_ERROR: str | None = None
+_LAST_ERROR_AT = 0.0
+_RETRY_SECONDS = 30
 
 
-def _get_model():
-    """Lazy-load embedding model so app startup stays fast and resilient."""
-    global _MODEL, _MODEL_LOAD_ERROR, _LAST_MODEL_ATTEMPT_AT
-    if _MODEL is not None:
-        return _MODEL
-    now = time.time()
-    if _MODEL_LOAD_ERROR is not None and (now - _LAST_MODEL_ATTEMPT_AT) < _MODEL_RETRY_SECONDS:
+def _embed_via_hf_api(texts: list[str]) -> np.ndarray | None:
+    """
+    Get embeddings from Hugging Face Inference API.
+    Returns (N, 384) array or None on failure.
+    """
+    global _LAST_API_ERROR, _LAST_ERROR_AT
+
+    if not HF_API_TOKEN:
+        _LAST_API_ERROR = "HF_API_TOKEN not configured"
+        logger.warning("HF_API_TOKEN not set — semantic search disabled")
         return None
 
-    try:
-        _LAST_MODEL_ATTEMPT_AT = now
-        from sentence_transformers import SentenceTransformer
+    # Don't retry too quickly after a failure
+    now = time.time()
+    if _LAST_API_ERROR and (now - _LAST_ERROR_AT) < _RETRY_SECONDS:
+        return None
 
-        _MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-        _MODEL_LOAD_ERROR = None
-        return _MODEL
-    except Exception as exc:
-        _MODEL_LOAD_ERROR = str(exc)
-        logger.warning("Semantic model unavailable, falling back to keyword search: %s", exc)
+    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+    payload = {"inputs": texts, "options": {"wait_for_model": True}}
+
+    try:
+        resp = requests.post(HF_API_URL, headers=headers, json=payload, timeout=30)
+        resp.raise_for_status()
+        embeddings = resp.json()
+        _LAST_API_ERROR = None
+        return np.array(embeddings, dtype=np.float32)
+    except Exception as e:
+        _LAST_API_ERROR = str(e)
+        _LAST_ERROR_AT = time.time()
+        logger.warning("HF Inference API error: %s", e)
         return None
 
 
 def semantic_available() -> bool:
-    return _get_model() is not None
+    """Check if semantic search can work (HF token is configured)."""
+    return bool(HF_API_TOKEN)
 
 
 def semantic_unavailable_reason() -> str | None:
-    _get_model()
-    return _MODEL_LOAD_ERROR
+    if not HF_API_TOKEN:
+        return "HF_API_TOKEN not configured"
+    return _LAST_API_ERROR
 
 
 def _cosine_similarity(query_vec: np.ndarray, doc_matrix: np.ndarray) -> np.ndarray:
@@ -68,8 +95,7 @@ def _text_for_attachment(row: Any) -> str:
 
 
 def semantic_search(engine, q: str, file_id: int | None = None, limit: int = 50) -> dict[str, Any] | None:
-    model = _get_model()
-    if model is None:
+    if not semantic_available():
         return None
 
     limit = max(1, min(limit, 100))
@@ -122,9 +148,12 @@ def semantic_search(engine, q: str, file_id: int | None = None, limit: int = 50)
     if not msg_texts and not att_texts:
         return {"query": q, "messages": [], "attachments": [], "search_mode": "semantic"}
 
+    # Embed everything via HF API
     corpus = [q] + msg_texts + att_texts
-    embeddings = model.encode(corpus, normalize_embeddings=False, show_progress_bar=False)
-    emb = np.asarray(embeddings, dtype=np.float32)
+    emb = _embed_via_hf_api(corpus)
+    if emb is None:
+        logger.info("HF API unavailable, falling back to keyword search")
+        return None
 
     query_vec = emb[0]
     msg_mat = emb[1 : 1 + len(msg_texts)] if msg_texts else np.zeros((0, emb.shape[1]), dtype=np.float32)

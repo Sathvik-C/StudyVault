@@ -1,6 +1,9 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import logging
+import os
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -9,10 +12,13 @@ from pathlib import Path
 from routers import upload, search, messages, rag
 from models.config import UPLOAD_DIR, STORAGE_DIR
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="Telegram Academic Organizer", version="2.0")
+app = FastAPI(title="StudyVault", version="2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,6 +36,26 @@ app.include_router(rag.router)
 static_dir = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+
+@app.on_event("startup")
+def on_startup():
+    """Run database migrations on startup."""
+    try:
+        from db.connection import get_engine
+        from db.auto_migrate import run_migrations
+        run_migrations(get_engine())
+        logger.info("Database migrations completed successfully")
+    except Exception as e:
+        logger.error("Migration failed: %s", e)
+        # Don't crash the app — it might still work if tables already exist
+
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for Render."""
+    return {"status": "healthy", "service": "StudyVault"}
+
+
 @app.get("/")
 def root():
     return FileResponse(static_dir / "landing.html")
@@ -37,3 +63,9 @@ def root():
 @app.get("/app")
 def app_ui():
     return FileResponse(static_dir / "index.html")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
