@@ -654,7 +654,7 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                 for pdf_row in pdf_attachments:
                     pdf_path = str(chat_storage_ / pdf_row.storage_path)
                     try:
-                        index_attachment(engine, pdf_row.id, pdf_path)
+                        index_attachment(engine, pdf_row.id, db_file_id, pdf_row.original_name, pdf_path)
                     except Exception as e:
                         logger.error("Failed to index PDF %s (attachment %d): %s", pdf_row.original_name, pdf_row.id, e)
                 logger.info("Background RAG indexing complete for file %d", db_file_id)
