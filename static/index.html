@@ -2139,10 +2139,25 @@ function toggleMobileSidebar() {
 async function loadFiles(fileId) {
   const container = document.getElementById('filesContent');
   try {
-    const res = await fetch(`${API}/messages/${fileId}/attachments`);
-    const files = await res.json();
+    let files = [];
+    for (let attempts = 0; attempts < 12; attempts++) {
+      const res = await fetch(`${API}/messages/${fileId}/attachments`);
+      files = await res.json();
+      if (files.length > 0 || currentFileId !== fileId) break;
+      
+      container.innerHTML = `
+        <div class="empty-state">
+          <div style="margin-bottom:12px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:var(--accent);"></i></div>
+          <div style="font-size:14px;">Organizing files in the background...</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px;">This takes about 1-2 minutes for large uploads.</div>
+        </div>`;
+      await new Promise(r => setTimeout(r, 5000));
+    }
+    
+    if (currentFileId !== fileId) return;
     _latestAttachments = files;
     if (!files.length) { container.innerHTML = '<div class="empty-state">No files found</div>'; return; }
+    
     const tree = buildTree(files);
     container.innerHTML = `
       <div class="panel-title">Academic Vault</div>
@@ -2161,6 +2176,9 @@ async function loadFiles(fileId) {
     `;
     // Setup drag-and-drop on custom upload drop zone
     setupCustomUploadDrop();
+    
+    // Automatically re-check RAG status once files finish loading
+    loadRagStatus();
   } catch (err) { container.innerHTML = 'Error loading files'; }
 }
 
