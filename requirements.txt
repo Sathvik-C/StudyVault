@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+python-multipart
+anthropic
+aiofiles
+numpy
+sentence-transformers
+groq
+python-dotenv
+pytesseract
+Pillow
+PyMuPDF
+pdfplumber
+python-docx
+python-pptx

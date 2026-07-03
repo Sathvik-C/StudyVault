@@ -1,0 +1,3087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyVault - Academic Organizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════
+     StudyVault v2 – Premium UI Theme
+     ═══════════════════════════════════════════════════════════ */
+
+  :root {
+    /* Background palette – Deep, layered */
+    --bg: #14151F;
+    --surface: #1F2031;
+    --surface2: #262738;
+
+    /* Text & borders */
+    --text: #EDEDF2;
+    --muted: #8B8D9E;
+    --border: #282A3A;
+
+    /* Accent palette – Indigo / Violet / Cyan */
+    --accent: #E8A33D;
+    --accent2: #E8A33D;
+    --accent3: #E8A33D;
+    --primary: var(--accent);
+    --ink-soft: rgba(255,255,255,0.03);
+    --panel-shadow: 0 10px 20px -10px rgba(0,0,0,0.3);
+
+    /* State colours */
+    --success: #5FAE7C;
+    --warning: #FBBF24;
+    --danger: #F87171;
+
+    /* Deadline palette */
+    --deadline-text: #C7D2FE;
+    --deadline-border: rgba(232,163,61,0.4);
+    --deadline-bg: rgba(232,163,61,0.12);
+    --deadline-glow: rgba(232,163,61,0.2);
+    --deadline-urgent-text: #FDE68A;
+    --deadline-urgent-border: rgba(251,191,36,0.5);
+    --deadline-urgent-bg: rgba(251,191,36,0.12);
+    --deadline-overdue-text: #FCA5A5;
+    --deadline-overdue-border: rgba(248,113,113,0.5);
+    --deadline-overdue-bg: rgba(248,113,113,0.12);
+
+    /* Typography */
+    --font-heading: 'Fraunces', serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  /* Light mode overrides */
+  [data-theme="light"] {
+    --bg: #F8F8FC;
+    --surface: #FFFFFF;
+    --surface2: #F0F0F7;
+    --text: #1A1A2E;
+    --muted: #6B6B88;
+    --border: rgba(0,0,0,0.08);
+    --ink-soft: rgba(0,0,0,0.03);
+    --panel-shadow: 0 20px 40px -28px rgba(0,0,0,0.18);
+    --deadline-text: #312E81;
+    --deadline-border: rgba(232,163,61,0.35);
+    --deadline-bg: rgba(232,163,61,0.10);
+    --deadline-glow: rgba(232,163,61,0.08);
+    --deadline-urgent-text: #92400E;
+    --deadline-urgent-border: rgba(251,191,36,0.40);
+    --deadline-urgent-bg: rgba(251,191,36,0.10);
+    --deadline-overdue-text: #991B1B;
+    --deadline-overdue-border: rgba(248,113,113,0.40);
+    --deadline-overdue-bg: rgba(248,113,113,0.10);
+  }
+
+  /* Reset */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  /* Typography helpers */
+  .font-heading { font-family: var(--font-heading); }
+  .font-body { font-family: var(--font-body); }
+  .font-mono { font-family: var(--font-mono); }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(232,163,61,0.25);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(232,163,61,0.4); }
+  * { scrollbar-width: thin; scrollbar-color: rgba(232,163,61,0.25) transparent; }
+
+  /* Grid pattern background utility */
+  .bg-grid-pattern {
+    background-image:
+      linear-gradient(to right, rgba(232,163,61,0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,163,61,0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Ambient glow orbs */
+  body::after {
+    display: none;
+    content: '';
+    position: fixed;
+    top: -20%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(232,163,61,0.15) 0%, rgba(232,163,61,0.06) 40%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+    animation: orbFloat 20s ease-in-out infinite;
+  }
+
+  body::before {
+    display: none;
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(232,163,61,0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,163,61,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  [data-theme="light"] body::before {
+    display: none;
+    background-image:
+      linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px);
+  }
+
+  @keyframes orbFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-30px, 20px) scale(1.05); }
+    66% { transform: translate(20px, -15px) scale(0.95); }
+  }
+
+  /* ─── App Layout ────────────────────────────────────────── */
+  .app {
+    display: flex;
+    height: 100vh;
+    position: relative;
+    z-index: 1;
+    padding: 14px;
+    gap: 12px;
+  }
+
+  /* ─── Sidebar ───────────────────────────────────────────── */
+  .sidebar {
+    width: 270px;
+    min-width: 270px;
+    background: linear-gradient(170deg, rgba(232,163,61,0.06), rgba(232,163,61,0.02), rgba(255,255,255,0.01));
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--panel-shadow), inset 0 1px 0 rgba(255,255,255,0.05);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s;
+  }
+
+  .logo {
+    padding: 28px 22px 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(232,163,61,0.12), rgba(232,163,61,0));
+  }
+  .logo-title {
+    font-family: var(--font-heading);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--text), var(--accent));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .logo-title span {
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 2.5px; text-transform: uppercase; margin-top: 6px; }
+
+  .uploads-list { flex: 1; overflow-y: auto; padding: 12px 10px; }
+  .section-label { font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); padding: 8px 12px 6px; font-weight: 600; }
+
+  .upload-item {
+    padding: 12px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid transparent;
+    margin-bottom: 6px;
+    background: var(--ink-soft);
+    position: relative;
+  }
+  .upload-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%) scaleY(0);
+    width: 3px;
+    height: 60%;
+    border-radius: 0 4px 4px 0;
+    background: linear-gradient(180deg, var(--accent), var(--accent3));
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .upload-item:hover {
+    transform: translateX(4px);
+    border-color: rgba(232,163,61,0.25);
+    background: rgba(232,163,61,0.06);
+    box-shadow: 0 8px 24px -16px rgba(232,163,61,0.3);
+  }
+  .upload-item:hover::before { transform: translateY(-50%) scaleY(1); }
+  .upload-item.active {
+    background: linear-gradient(110deg, rgba(232,163,61,0.18), rgba(232,163,61,0.06));
+    border-color: rgba(232,163,61,0.4);
+    box-shadow: 0 12px 28px -16px rgba(232,163,61,0.4);
+  }
+  .upload-item.active::before { transform: translateY(-50%) scaleY(1); }
+  .upload-item-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .upload-item-meta { font-size: 10px; color: var(--muted); margin-top: 3px; display: flex; gap: 8px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9px; padding: 2px 8px; border-radius: 20px; font-weight: 600; letter-spacing: 0.3px; }
+  .badge-tg { background: rgba(232,163,61,0.15); color: var(--accent); }
+  .badge-wa { background: rgba(232,163,61,0.12); color: var(--accent3); }
+
+  /* ─── Main ──────────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: linear-gradient(170deg, rgba(255,255,255,0.03), rgba(255,255,255,0.005));
+    box-shadow: var(--panel-shadow), inset 0 1px 0 rgba(255,255,255,0.04);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* ─── Header ────────────────────────────────────────────── */
+  .header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .header-title {
+    font-family: var(--font-heading);
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .header-title .dim { color: var(--muted); font-weight: 400; }
+
+  /* ─── Hamburger (mobile only) ───────────────────────────── */
+  .hamburger {
+    display: none;
+    background: var(--ink-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: 18px;
+    line-height: 1;
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+  }
+  .hamburger:hover { border-color: var(--accent); color: var(--accent); }
+  .mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    z-index: 99;
+  }
+  .mobile-overlay.visible { display: block; }
+
+  /* ─── Theme toggle ──────────────────────────────────────── */
+  .btn-theme {
+    background: var(--ink-soft);
+    border: 1px solid var(--border);
+    padding: 7px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: 14px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-theme:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px) rotate(15deg);
+    box-shadow: 0 8px 20px -12px rgba(232,163,61,0.5);
+  }
+
+  /* ─── Nav Tabs ──────────────────────────────────────────── */
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(0,0,0,0.25);
+  }
+  [data-theme="light"] .nav-tabs { background: rgba(0,0,0,0.04); }
+
+  .tab {
+    padding: 7px 16px;
+    border-radius: 10px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: var(--font-mono);
+    font-weight: 500;
+    background: none;
+    color: var(--muted);
+    position: relative;
+    overflow: hidden;
+  }
+  .tab:hover {
+    color: var(--text);
+    background: rgba(232,163,61,0.08);
+    transform: translateY(-1px);
+  }
+  .tab.active {
+    color: #fff;
+    border-color: rgba(232,163,61,0.4);
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    font-weight: 600;
+    box-shadow: 0 8px 24px -12px rgba(232,163,61,0.6);
+    transform: translateY(-2px);
+  }
+  [data-theme="light"] .tab.active { color: #fff; }
+
+  /* ─── Search ────────────────────────────────────────────── */
+  .search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .search-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    outline: none;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+    background: var(--surface2);
+    box-shadow: 0 0 0 3px rgba(232,163,61,0.12), 0 8px 24px -12px rgba(232,163,61,0.2);
+  }
+  .search-input::placeholder { color: var(--muted); }
+
+  /* ─── Content ───────────────────────────────────────────── */
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* ─── Upload Zone ───────────────────────────────────────── */
+  .upload-zone {
+    border: 2px dashed rgba(232,163,61,0.35);
+    border-radius: 24px;
+    padding: 60px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    background: linear-gradient(160deg, rgba(232,163,61,0.08), rgba(232,163,61,0.03), rgba(232,163,61,0.02));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 24px;
+    padding: 2px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3), var(--accent));
+    background-size: 300% 300%;
+    animation: gradientShift 8s ease infinite;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  .upload-zone:hover::before { opacity: 0.6; }
+  .upload-zone:hover {
+    transform: translateY(-4px);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 20px 40px -16px rgba(232,163,61,0.2);
+    background: linear-gradient(160deg, rgba(232,163,61,0.14), rgba(232,163,61,0.06), rgba(232,163,61,0.04));
+  }
+  .upload-zone.drag-over {
+    background: linear-gradient(160deg, rgba(232,163,61,0.22), rgba(232,163,61,0.12));
+    box-shadow: inset 0 0 0 1px rgba(232,163,61,0.4), 0 20px 48px -12px rgba(232,163,61,0.35);
+  }
+  .upload-zone.drag-over::before { opacity: 1; }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .upload-icon {
+    font-size: 52px;
+    margin-bottom: 18px;
+    display: block;
+    animation: float 3s ease-in-out infinite;
+    filter: drop-shadow(0 8px 16px rgba(232,163,61,0.25));
+  }
+  .upload-title {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.3px;
+  }
+  .upload-subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .upload-sub { font-size: 12px; color: var(--muted); }
+  #fileInput { display: none; }
+
+  /* ─── Progress ──────────────────────────────────────────── */
+  .progress-wrap {
+    margin-top: 24px;
+    display: none;
+    animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .progress-wrap.visible { display: block; }
+  .progress-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .progress-label .progress-status {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.2px;
+  }
+  .progress-label .progress-pct {
+    font-family: var(--font-heading);
+    font-size: 16px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transition: all 0.3s ease;
+    min-width: 46px;
+    text-align: right;
+  }
+  .progress-bar {
+    height: 6px;
+    background: rgba(232,163,61,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+    background-size: 200% 100%;
+    animation: gradientShift 2s ease infinite;
+    transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 0%;
+    box-shadow: 0 0 14px rgba(232,163,61,0.5);
+    border-radius: 4px;
+  }
+  .progress-steps {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .progress-step {
+    flex: 1;
+    height: 2px;
+    border-radius: 2px;
+    background: rgba(232,163,61,0.12);
+    transition: background 0.4s ease;
+  }
+  .progress-step.done {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    box-shadow: 0 0 8px rgba(232,163,61,0.4);
+  }
+  .progress-step.active {
+    background: rgba(232,163,61,0.3);
+    animation: stepPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes stepPulse {
+    0%, 100% { background: rgba(232,163,61,0.2); }
+    50% { background: rgba(232,163,61,0.5); }
+  }
+
+  /* ─── Result Card ───────────────────────────────────────── */
+  .result-card {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid rgba(232,163,61,0.3);
+    border-radius: 20px;
+    padding: 28px;
+    margin-top: 20px;
+    display: none;
+    animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 20px 60px -20px rgba(232,163,61,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+    min-height: 200px;
+    position: relative;
+    overflow: hidden;
+  }
+  .result-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 20px;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .result-title {
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .result-title .icon { font-size: 24px; }
+  .result-card.visible { display: block !important; }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── Stat Boxes ────────────────────────────────────────── */
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .result-grid > div { animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+  .result-grid > div:nth-child(1) { animation-delay: 0s; }
+  .result-grid > div:nth-child(2) { animation-delay: 0.08s; }
+  .result-grid > div:nth-child(3) { animation-delay: 0.16s; }
+  .result-grid > div:nth-child(4) { animation-delay: 0.24s; }
+  .result-grid > div:nth-child(5) { animation-delay: 0.32s; }
+  .result-grid > div:nth-child(6) { animation-delay: 0.40s; }
+
+  .stat-box {
+    background: linear-gradient(160deg, var(--surface), var(--surface2));
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    animation: fadeUp 0.4s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(232,163,61,0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+    border-radius: 14px;
+  }
+  .stat-box:hover {
+    border-color: rgba(232,163,61,0.4);
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px -16px rgba(232,163,61,0.3);
+  }
+  .stat-box:hover::before { opacity: 1; }
+
+  .stat-num {
+    font-family: 'Outfit', var(--font-heading);
+    font-size: 38px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ─── Tree View ─────────────────────────────────────────── */
+  .tree-container {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--panel-shadow);
+  }
+  .tree-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    background: linear-gradient(180deg, rgba(232,163,61,0.05), transparent);
+  }
+  .tree-actions { margin-left: auto; display: flex; gap: 8px; }
+  .action-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 10px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .action-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(232,163,61,0.08);
+    transform: translateY(-1px);
+  }
+
+  .tree-body { padding: 12px; }
+  .tree-node { user-select: none; }
+
+  .tree-row {
+    display: grid;
+    grid-template-columns: 24px 24px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    min-height: 42px;
+    border: 1px solid transparent;
+    position: relative;
+  }
+  .tree-row:hover {
+    background: rgba(232,163,61,0.06);
+    border-color: rgba(232,163,61,0.2);
+  }
+  .tree-row.folder-row:hover { transform: translateX(2px); }
+  .tree-row.drag-over {
+    background: rgba(232,163,61,0.15) !important;
+    border: 1px dashed var(--accent);
+  }
+  .tree-row.dragging { opacity: 0.4; }
+
+  @keyframes newFilePulse {
+    0%   { background: rgba(232,163,61,0.18); box-shadow: 0 0 0 2px rgba(232,163,61,0.4); }
+    50%  { background: rgba(232,163,61,0.06); box-shadow: 0 0 0 2px rgba(232,163,61,0.1); }
+    100% { background: rgba(232,163,61,0.18); box-shadow: 0 0 0 2px rgba(232,163,61,0.4); }
+  }
+  .file-new {
+    animation: newFilePulse 1.2s ease-in-out infinite;
+    border-radius: 8px;
+  }
+  .folder-new > .tree-arrow,
+  .folder-new > .tree-icon,
+  .folder-new > .tree-name {
+    color: var(--accent) !important;
+  }
+  .folder-new::after {
+    content: ' NEW';
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(232,163,61,0.15);
+    border: 1px solid rgba(232,163,61,0.3);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    letter-spacing: 0.5px;
+    animation: newFilePulse 1.2s ease-in-out infinite;
+  }
+
+  .tree-arrow {
+    color: rgba(232,163,61,0.6);
+    font-size: 11px;
+    text-align: center;
+    transition: transform 0.2s ease;
+  }
+  .tree-icon { font-size: 16px; text-align: center; }
+  .tree-name {
+    font-size: 14px;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .file-row .tree-name {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  .row-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
+  .tree-row:hover .row-actions { opacity: 1; }
+
+  .row-action-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+  .row-action-btn:hover { color: var(--accent); transform: scale(1.15); background: rgba(232,163,61,0.1); }
+  .row-action-btn.delete:hover { color: var(--danger); background: rgba(248,113,113,0.1); }
+
+  /* ─── Note Panel ────────────────────────────────────────── */
+  .note-panel {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 12px 14px 14px;
+    margin-top: -2px;
+    margin-left: 36px;
+    margin-right: 4px;
+    display: none;
+  }
+  .note-panel.open { display: block; animation: slideDown 0.2s ease; }
+  .note-textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 8px 10px;
+    resize: vertical;
+    min-height: 54px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+  }
+  .note-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232,163,61,0.1); }
+  .note-tags-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .note-tag {
+    background: rgba(232,163,61,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(232,163,61,0.25);
+    border-radius: 20px;
+    font-size: 11px;
+    padding: 2px 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .note-tag-del { cursor: pointer; opacity: 0.6; font-size: 13px; line-height: 1; }
+  .note-tag-del:hover { opacity: 1; color: var(--danger); }
+  .note-tag-input {
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    color: var(--text);
+    font-size: 11px;
+    padding: 2px 10px;
+    width: 90px;
+    transition: border-color 0.2s;
+  }
+  .note-tag-input:focus { outline: none; border-color: var(--accent); }
+  .note-delete-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--muted);
+    border-radius: 12px;
+    font-size: 10px;
+    padding: 2px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .note-delete-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(248,113,113,0.06); }
+  .note-save-indicator { font-size: 10px; color: var(--success); margin-left: auto; opacity: 0; transition: opacity 0.3s; }
+  .note-save-indicator.show { opacity: 1; }
+
+  .share-structure-box {
+    width: min(920px, 95vw);
+    max-height: 60vh;
+    overflow: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    white-space: pre;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .tree-children {
+    margin-left: 20px;
+    border-left: 1px solid var(--border);
+    padding-left: 8px;
+  }
+  .tree-children.collapsed { display: none; }
+
+  .file-size { font-size: 10px; color: var(--muted); margin-left: 8px; }
+  .category-tag { font-size: 9px; padding: 2px 8px; border-radius: 4px; font-weight: 600; margin-left: 8px; letter-spacing: 0.3px; }
+  .cat-Notes { background: rgba(232,163,61,0.12); color: var(--accent); }
+  .cat-Assignments { background: rgba(232,163,61,0.12); color: var(--accent2); }
+
+  /* ─── Message Cards ─────────────────────────────────────── */
+  .msg-card {
+    background: linear-gradient(170deg, rgba(255,255,255,0.03), rgba(255,255,255,0.005));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 10px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slideIn 0.3s ease;
+    position: relative;
+    border-left: 3px solid rgba(232,163,61,0.4);
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .msg-card:hover {
+    border-left-color: var(--accent);
+    transform: translateX(4px);
+    box-shadow: 0 12px 32px -16px rgba(232,163,61,0.25);
+    background: linear-gradient(170deg, rgba(232,163,61,0.04), rgba(255,255,255,0.01));
+  }
+
+  .msg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .msg-sender {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .msg-trigger {
+    font-size: 10px;
+    padding: 3px 10px;
+    background: rgba(232,163,61,0.15);
+    color: var(--accent2);
+    border-radius: 6px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .msg-content { font-size: 13px; line-height: 1.6; color: var(--text); }
+
+  /* ─── Deadline pills ────────────────────────────────────── */
+  .msg-deadline {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--warning);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .deadline-pill {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 4px 12px;
+    border: 1px solid var(--deadline-border);
+    background: var(--deadline-bg);
+    color: var(--deadline-text);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset, 0 4px 14px -10px var(--deadline-glow);
+  }
+  .deadline-pill.urgent {
+    border-color: var(--deadline-urgent-border);
+    background: var(--deadline-urgent-bg);
+    color: var(--deadline-urgent-text);
+  }
+  .deadline-pill.overdue {
+    border-color: var(--deadline-overdue-border);
+    background: var(--deadline-overdue-bg);
+    color: var(--deadline-overdue-text);
+  }
+  .deadline-meta {
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* ─── Sort Bar ──────────────────────────────────────────── */
+  .sort-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sort-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-right: 2px;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .sort-btn {
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: inherit;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .sort-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+  .sort-btn.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border-color: transparent;
+    font-weight: 600;
+    box-shadow: 0 4px 12px -4px rgba(232,163,61,0.4);
+  }
+  .sort-divider { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
+  .sort-section { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+  /* ─── Search Results ────────────────────────────────────── */
+  .search-result-section { margin-bottom: 24px; }
+  .search-result-title {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+  .search-result-item {
+    padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    animation: slideIn 0.3s ease;
+  }
+  .search-result-item:hover {
+    border-color: rgba(232,163,61,0.35);
+    transform: translateX(4px);
+    box-shadow: 0 12px 28px -14px rgba(232,163,61,0.25);
+    background: rgba(232,163,61,0.04);
+  }
+  .search-result-item .path { color: var(--muted); font-size: 10px; margin-top: 4px; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── Modals ────────────────────────────────────────────── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.visible {
+    display: flex;
+    animation: fadeIn 0.25s ease;
+  }
+  .modal {
+    background: linear-gradient(170deg, rgba(18,21,30,0.98), rgba(12,14,20,0.98));
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    width: 400px;
+    padding: 28px;
+    box-shadow: 0 40px 100px -40px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    animation: modalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  [data-theme="light"] .modal {
+    background: linear-gradient(170deg, rgba(255,255,255,0.98), rgba(248,248,252,0.98));
+    box-shadow: 0 40px 100px -40px rgba(0,0,0,0.25);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal-title {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    letter-spacing: -0.3px;
+  }
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .form-input {
+    width: 100%;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .form-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(232,163,61,0.12);
+    transform: translateY(-1px);
+  }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  /* ─── Buttons ───────────────────────────────────────────── */
+  .btn,
+  .btn-outline {
+    padding: 9px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.2px;
+  }
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.25), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s;
+  }
+  .btn:active::before { transform: translateX(100%); }
+  .btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border-color: rgba(232,163,61,0.4);
+  }
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -12px rgba(232,163,61,0.5);
+  }
+  .btn-outline {
+    background: rgba(255,255,255,0.03);
+    color: var(--text);
+  }
+  .btn-outline:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-1px);
+    background: rgba(232,163,61,0.06);
+  }
+
+  /* ─── Toasts ────────────────────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 14px 22px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 1001;
+    animation: toastIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 12px 40px -12px rgba(0,0,0,0.5);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(40px) scale(0.95); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  .toast-success {
+    background: rgba(52,211,153,0.15);
+    border: 1px solid rgba(52,211,153,0.35);
+    color: var(--success);
+  }
+  .toast-error {
+    background: rgba(248,113,113,0.15);
+    border: 1px solid rgba(248,113,113,0.35);
+    color: var(--danger);
+  }
+
+  /* ─── Custom Upload Drop ────────────────────────────────── */
+  .custom-upload-drop {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 13px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .custom-upload-drop:hover,
+  .custom-upload-drop.drag-active {
+    border-color: var(--accent);
+    background: rgba(232,163,61,0.06);
+    color: var(--text);
+    transform: translateY(-2px);
+  }
+
+  /* ─── Panel system ──────────────────────────────────────── */
+  .panel { display: none; animation: fadeIn 0.3s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .panel-title {
+    font-family: var(--font-heading);
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    background: linear-gradient(135deg, var(--text), var(--accent));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .panel-title::after {
+    content: '';
+    height: 1px;
+    flex: 1;
+    background: linear-gradient(90deg, rgba(232,163,61,0.4), transparent);
+  }
+
+  /* ─── Empty States ──────────────────────────────────────── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 40px;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005));
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    animation: fadeIn 0.3s ease;
+  }
+  .empty-state-icon {
+    font-size: 56px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  .empty-state-text {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .empty-state-subtext {
+    font-size: 12px;
+    color: rgba(255,255,255,0.04);
+  }
+
+  /* ─── Loading Skeleton ──────────────────────────────────── */
+  .skeleton {
+    background: linear-gradient(90deg, rgba(232,163,61,0.05), rgba(232,163,61,0.12), rgba(232,163,61,0.05));
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .skeleton-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }
+  .skeleton-line {
+    height: 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  .skeleton-line:last-child { margin-bottom: 0; }
+  .skeleton-line.long { width: 100%; }
+  .skeleton-line.medium { width: 70%; }
+  .skeleton-line.short { width: 40%; }
+
+  /* ─── Dashboard ─────────────────────────────────────────── */
+  .dashboard-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+
+  .dash-stat {
+    grid-column: span 2;
+    background: linear-gradient(160deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    animation: fadeUp 0.4s ease;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .dash-stat::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(232,163,61,0.08), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+    border-radius: 14px;
+  }
+  .dash-stat:hover {
+    border-color: rgba(232,163,61,0.4);
+    transform: translateY(-6px);
+    box-shadow: 0 16px 36px -12px rgba(232,163,61,0.25);
+  }
+  .dash-stat:hover::before { opacity: 1; }
+  .dash-stat-value {
+    font-family: var(--font-heading);
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    position: relative;
+    z-index: 1;
+  }
+  .dash-stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-top: 6px;
+    font-weight: 600;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ─── Alert Strip ──────────────────────────────────────────── */
+  .alert-strip {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    margin-bottom: 14px;
+    background: var(--deadline-bg);
+    border: 1px solid var(--deadline-border);
+    border-radius: 10px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    animation: slideDown 0.25s ease;
+  }
+  .alert-strip.visible { display: flex; }
+  .alert-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--deadline-text);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .alert-divider {
+    width: 1px;
+    height: 16px;
+    background: var(--deadline-border);
+    flex-shrink: 0;
+  }
+  .alert-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .alert-chip {
+    background: rgba(232,163,61,0.08);
+    border: 1px solid var(--deadline-border);
+    color: var(--deadline-text);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .alert-chip:hover {
+    background: rgba(232,163,61,0.18);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .alert-chip.urgent {
+    background: var(--deadline-urgent-bg);
+    border-color: var(--deadline-urgent-border);
+    color: var(--deadline-urgent-text);
+  }
+  [data-theme="light"] .alert-chip { background: rgba(232,163,61,0.06); }
+
+  .dash-card {
+    background: linear-gradient(170deg, rgba(255,255,255,0.03), rgba(255,255,255,0.008));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--panel-shadow);
+    animation: fadeUp 0.4s ease;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .dash-card:hover {
+    box-shadow: 0 16px 40px -16px rgba(232,163,61,0.2);
+  }
+  .dash-card h4 {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .dash-col-6 { grid-column: span 6; }
+  .dash-col-12 { grid-column: span 12; }
+
+  .bar-list { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 180px) 1fr 44px;
+    gap: 10px;
+    align-items: center;
+    animation: slideIn 0.3s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .bar-row.clickable { cursor: pointer; }
+  .bar-row.clickable:hover { transform: translateX(4px); }
+  .bar-row.clickable:hover .bar-label { color: var(--accent); }
+  .bar-label {
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.2s;
+    font-weight: 500;
+  }
+  .bar-track {
+    height: 8px;
+    background: rgba(232,163,61,0.08);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+    border-radius: 99px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .bar-val { font-size: 11px; color: var(--muted); text-align: right; font-weight: 500; }
+
+  .deadline-timeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .deadline-chip {
+    border: 1px solid var(--deadline-border);
+    background: linear-gradient(180deg, var(--deadline-bg), transparent);
+    color: var(--deadline-text);
+    border-radius: 12px;
+    padding: 10px 12px;
+    box-shadow: 0 8px 24px -18px var(--deadline-glow);
+    animation: fadeUp 0.4s ease;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .deadline-chip.clickable { cursor: pointer; }
+  .deadline-chip.clickable:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 14px 36px -12px rgba(232,163,61,0.35);
+  }
+  .deadline-date { font-size: 12px; font-weight: 700; color: var(--deadline-text); }
+  .deadline-count { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+
+
+  /* ─── Thread View ───────────────────────────────────────── */
+  .thread-wrap { max-height: 60vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: var(--surface); }
+  .thread-msg { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface2); transition: border-color 0.2s; }
+  .thread-msg.center { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(232,163,61,0.2) inset, 0 4px 16px -8px rgba(232,163,61,0.2); background: rgba(232,163,61,0.04); }
+  .thread-meta { font-size: 10px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .thread-content { font-size: 12px; white-space: pre-wrap; line-height: 1.5; }
+
+  /* ─── Responsive ────────────────────────────────────────── */
+  @media (max-width: 1100px) {
+    .app { padding: 10px; }
+    .dash-stat { grid-column: span 4; }
+    .dash-col-6 { grid-column: span 12; }
+    .header { flex-wrap: wrap; gap: 10px; }
+    .header-right { width: 100%; justify-content: space-between; }
+    .nav-tabs { overflow-x: auto; max-width: calc(100vw - 140px); }
+  }
+  @media (max-width: 900px) {
+    .hamburger { display: flex; }
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 100;
+      border-radius: 0 20px 20px 0;
+      transform: translateX(-110%);
+      width: 280px;
+      min-width: 280px;
+    }
+    .sidebar.open {
+      transform: translateX(0);
+      box-shadow: 20px 0 60px -20px rgba(0,0,0,0.6);
+    }
+    .app { flex-direction: column; height: auto; min-height: 100vh; }
+    .main { min-height: calc(100vh - 80px); }
+    .content { padding: 16px; }
+  }
+  @media (max-width: 700px) {
+    .dash-stat { grid-column: span 6; }
+    .header-title { font-size: 17px; }
+    .upload-zone { padding: 40px 20px; }
+    .result-grid { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
+    .panel-title { font-size: 22px; }
+  }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+</style>
+
+</head>
+<body>
+
+<div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileSidebar()"></div>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-title">Study<span>Vault</span></div><div class="logo-sub">Academic Organizer</div></div>
+    <div class="uploads-list"><div class="section-label">Uploads</div><div id="uploadsList"></div></div>
+  </aside>
+
+  <main class="main">
+    <header class="header">
+      <button class="hamburger" onclick="toggleMobileSidebar()">&#9776;</button>
+      <div class="header-title" id="headerTitle"><span class="dim">/ </span>Upload</div>
+      <div class="header-right">
+        <nav class="nav-tabs">
+          <button class="tab active" onclick="switchTab('upload', this)">Upload</button>
+          <button class="tab" onclick="switchTab('files', this)" id="tabFiles">Files</button>
+          <button class="tab" onclick="switchTab('important', this)" id="tabImportant">Important</button>
+          <button class="tab" onclick="switchTab('dashboard', this)" id="tabDashboard">Dashboard</button>
+          <button class="tab" onclick="switchTab('ask', this)" id="tabAsk">Ask AI ✨</button>
+          <button class="tab" onclick="switchTab('search', this)" id="tabSearch">Search</button>
+        </nav>
+        <button id="themeToggle" class="btn-theme" onclick="toggleTheme()">&#127769;</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div id="deadlineAlerts" class="alert-strip"></div>
+      <div class="panel active" id="panel-upload">
+        <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+          <span class="upload-icon">&#128230;</span>
+          <div class="upload-title">Drop export here</div>
+          <div class="upload-subtitle">Upload WhatsApp or Telegram zip file</div>
+          <input type="file" id="fileInput" accept=".zip" onchange="handleFileSelect(event)">
+        </div>
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-label">
+            <span class="progress-status" id="progressStatus">Preparing upload…</span>
+            <span class="progress-pct" id="progressPct">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <div class="progress-steps">
+            <div class="progress-step" id="pStep1"></div>
+            <div class="progress-step" id="pStep2"></div>
+            <div class="progress-step" id="pStep3"></div>
+            <div class="progress-step" id="pStep4"></div>
+          </div>
+        </div>
+        <div class="result-card" id="resultCard"></div>
+      </div>
+      <div class="panel" id="panel-files"><div id="filesContent"></div></div>
+      <div class="panel" id="panel-important"><div id="importantContent"></div></div>
+      <div class="panel" id="panel-dashboard"><div id="dashboardContent"></div></div>
+      <div class="panel" id="panel-ask">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h2 class="panel-title" style="margin:0">Ask AI <span style="font-size:12px; font-weight:normal; margin-left:10px; color:var(--muted)" id="ragStatusText">Checking indexing status...</span></h2>
+          <button class="btn-outline" onclick="forceRagIndex()" id="btnForceIndex" style="display:none">Index Documents</button>
+        </div>
+        <div id="ragChatArea" style="height: 50vh; overflow-y: auto; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 12px;">
+          <div class="empty-state" id="ragEmptyState" style="margin:auto; border:none; padding:20px;">
+            <div class="empty-state-icon">🤖</div>
+            <div class="empty-state-text">Ask anything about your documents</div>
+            <div class="empty-state-subtext">The AI will read your PDFs and cite its sources.</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="ragInput" class="form-input" placeholder="E.g. What is covered in Module 3?" onkeydown="if(event.key==='Enter') sendRagQuestion()" disabled>
+          <button class="btn btn-primary" id="ragSendBtn" onclick="sendRagQuestion()" disabled>Send</button>
+        </div>
+      </div>
+      <div class="panel" id="panel-search">
+        <div class="search-bar"><input class="search-input" id="searchInput" placeholder="Search messages and files..." onkeydown="if(event.key==='Enter') doSearch()"></div>
+        <div id="searchSortBar" style="display:none" class="sort-bar" style="margin-top:12px"></div>
+        <div id="searchResults"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modals -->
+<div class="modal-overlay" id="moveModal">
+  <div class="modal">
+    <div class="modal-title">Edit Details</div>
+    <input type="hidden" id="moveAttachmentId">
+    <div class="form-group"><label class="form-label">Filename</label><input type="text" id="moveFilename" class="form-input"></div>
+    <div class="form-group"><label class="form-label">Category</label><input type="text" id="moveCategory" class="form-input"></div>
+    <div class="form-group"><label class="form-label">Subject</label><input type="text" id="moveSubject" class="form-input"></div>
+    <div class="form-group"><label class="form-label">Subcategory</label><input type="text" id="moveSubcategory" class="form-input"></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeMoveModal()">Cancel</button><button class="btn btn-primary" onclick="confirmMove()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="folderModal">
+  <div class="modal">
+    <div class="modal-title" id="folderModalTitle">New Folder</div>
+    <div class="form-group"><label class="form-label">Name</label><input type="text" id="newFolderName" class="form-input"></div>
+    <div class="modal-actions"><button onclick="closeFolderModal()">Cancel</button><button class="btn btn-primary" id="confirmFolderBtn">Create</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="customUploadModal">
+  <div class="modal">
+    <div class="modal-title">Upload File to Vault</div>
+    <div class="form-group">
+      <label class="form-label">File</label>
+      <div class="custom-upload-drop" id="customUploadDrop" onclick="document.getElementById('customFileInput').click()">
+        <span id="customUploadDropLabel">Click or drop a file here</span>
+        <input type="file" id="customFileInput" style="display:none" onchange="onCustomFileChosen(this)">
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Category</label><input type="text" id="customCategory" class="form-input" placeholder="e.g. Notes"></div>
+    <div class="form-group"><label class="form-label">Subject</label><input type="text" id="customSubject" class="form-input" placeholder="e.g. Mathematics"></div>
+    <div class="form-group"><label class="form-label">Subcategory <span style="color:var(--muted);font-weight:400">(optional)</span></label><input type="text" id="customSubcategory" class="form-input" placeholder="e.g. Week 3"></div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeCustomUploadModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmCustomUpload()">Upload</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="threadModal">
+  <div class="modal" style="width:min(920px,95vw)">
+    <div class="modal-title">Message Thread Context</div>
+    <div id="threadContent"></div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeThreadModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="shareStructureModal">
+  <div class="modal" style="width:min(980px,95vw)">
+    <div class="modal-title">Share Folder Structure</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Copy or download this and share it with your friends.</div>
+    <textarea id="shareStructureText" class="share-structure-box" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeShareStructureModal()">Close</button>
+      <button class="btn-outline" onclick="copyShareStructure()">Copy</button>
+      <button class="btn btn-primary" onclick="downloadShareStructure()">Download .txt</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let currentFileId = null;
+let uploads = [];
+let expandedFolders = new Set();
+let pendingHighlightIds = [];
+let _upcomingAlerts = [];
+let _latestAttachments = [];
+let _deadlineAlertRangeDays = 7;
+
+async function loadUploadsOnStart() {
+  try {
+    const res = await fetch(`${API}/upload/list`);
+    const data = await res.json();
+    uploads = data.map(u => ({ file_id: u.file_id, filename: u.chat_name || u.filename, source_type: u.source_type, message_count: u.message_count }));
+    renderSidebar();
+    if (!currentFileId && uploads.length) {
+      selectUpload(uploads[0].file_id, uploads[0].filename);
+    }
+  } catch (err) {}
+}
+window.addEventListener('DOMContentLoaded', loadUploadsOnStart);
+
+function tabButtonFor(tab) {
+  const map = { files: 'tabFiles', important: 'tabImportant', search: 'tabSearch', dashboard: 'tabDashboard', ask: 'tabAsk' };
+  return document.getElementById(map[tab] || '');
+}
+
+function switchTab(tab, clickedBtn, skipLoad = false) {
+  // highlight the clicked tab
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (!clickedBtn) clickedBtn = tabButtonFor(tab);
+  if (clickedBtn) clickedBtn.classList.add('active');
+
+  // show corresponding panel
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${tab}`).classList.add('active');
+
+  if (!skipLoad && currentFileId) {
+    if (tab === 'files') loadFiles(currentFileId);
+    if (tab === 'important') loadImportant(currentFileId);
+    if (tab === 'dashboard') loadDashboard(currentFileId);
+    if (tab === 'ask') { loadRagStatus(); document.getElementById('ragInput').focus(); }
+  }
+  if (tab === 'search') { document.getElementById('searchInput').focus(); }
+}
+
+function handleFileSelect(e) { if (e.target.files[0]) uploadFile(e.target.files[0]); }
+
+function setProgress(pct, status, stepIndex) {
+  const fill    = document.getElementById('progressFill');
+  const pctEl   = document.getElementById('progressPct');
+  const statEl  = document.getElementById('progressStatus');
+  const steps   = ['pStep1','pStep2','pStep3','pStep4'];
+  if (fill)   fill.style.width = `${pct}%`;
+  if (pctEl)  pctEl.textContent = `${Math.round(pct)}%`;
+  if (statEl) statEl.textContent = status;
+  steps.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'progress-step' + (i < stepIndex ? ' done' : i === stepIndex ? ' active' : '');
+  });
+}
+
+function uploadFile(file) {
+  return new Promise((resolve) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const resultCard = document.getElementById('resultCard');
+    resultCard.classList.remove('visible');
+    resultCard.innerHTML = '';
+    document.getElementById('progressWrap').classList.add('visible');
+    setProgress(0, 'Preparing upload…', 0);
+
+    const xhr = new XMLHttpRequest();
+    let serverSimInterval = null;
+    let serverPct = 60;
+
+    // Phase 1 (0–60%): real upload bytes tracked by XHR
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const uploadPct = (e.loaded / e.total) * 60;
+        if (uploadPct < 30) {
+          setProgress(uploadPct, 'Uploading file…', 0);
+        } else {
+          setProgress(uploadPct, 'Transferring data…', 1);
+        }
+      }
+    });
+
+    // Phase 2 (60–99%): simulated server processing after upload completes
+    xhr.upload.addEventListener('load', () => {
+      setProgress(60, 'Extracting ZIP…', 1);
+      const phases = [
+        { target: 72, status: 'Extracting ZIP…',      step: 1 },
+        { target: 84, status: 'Parsing messages…',    step: 2 },
+        { target: 95, status: 'Classifying files…',   step: 2 },
+        { target: 99, status: 'Saving to database…',  step: 3 },
+      ];
+      let phaseIdx = 0;
+      serverSimInterval = setInterval(() => {
+        if (phaseIdx >= phases.length) { clearInterval(serverSimInterval); return; }
+        const { target, status, step } = phases[phaseIdx];
+        serverPct = Math.min(serverPct + 1.5, target);
+        setProgress(serverPct, status, step);
+        if (serverPct >= target) phaseIdx++;
+      }, 80);
+    });
+
+    xhr.addEventListener('load', async () => {
+      clearInterval(serverSimInterval);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        setProgress(100, 'Done! ✓', 4);
+        setTimeout(() => {
+          document.getElementById('progressWrap').classList.remove('visible');
+        }, 600);
+        try {
+          const data = JSON.parse(xhr.responseText);
+          currentFileId = data.file_id;
+          pendingHighlightIds = data.is_reupload ? (data.new_attachment_ids || []) : [];
+          await loadUploadsOnStart();
+          showResult(data);
+          showToast('Upload successful');
+          await loadFiles(currentFileId);
+          applyHighlights();
+          switchTab('files', document.querySelector('.tab[onclick*="files"]'), true);
+        } catch (e) { showToast('Upload failed', 'error'); }
+      } else {
+        clearInterval(serverSimInterval);
+        document.getElementById('progressWrap').classList.remove('visible');
+        try {
+          const data = JSON.parse(xhr.responseText);
+          showToast(data.detail || 'Upload failed', 'error');
+        } catch { showToast('Upload failed', 'error'); }
+      }
+      resolve();
+    });
+
+    xhr.addEventListener('error', () => {
+      clearInterval(serverSimInterval);
+      document.getElementById('progressWrap').classList.remove('visible');
+      showToast('Upload failed', 'error');
+      resolve();
+    });
+
+    xhr.open('POST', `${API}/upload`);
+    xhr.send(formData);
+  });
+}
+
+function showResult(data) {
+  const card = document.getElementById('resultCard');
+  if (!card) return;
+  
+  card.classList.add('visible');
+  const badge = data.source_type === 'whatsapp'
+    ? '<span class="badge badge-wa">WhatsApp</span>'
+    : '<span class="badge badge-tg">Telegram</span>';
+  card.innerHTML = `
+    <div class="result-header">
+      <div class="result-title"><span class="icon">&#10003;</span> Upload successful</div>
+      ${badge}
+    </div>
+    <div class="result-grid">
+      <div class="stat-box"><div class="stat-num font-mono">${data.message_count||0}</div><div class="stat-label">Messages</div></div>
+      <div class="stat-box"><div class="stat-num font-mono">${data.attachments_moved||0}</div><div class="stat-label">Files Moved</div></div>
+      <div class="stat-box"><div class="stat-num font-mono">${data.important_count||0}</div><div class="stat-label">Important</div></div>
+      <div class="stat-box"><div class="stat-num font-mono">${data.attachments_missing||0}</div><div class="stat-label">Missing</div></div>
+    </div>
+  `;
+  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+}
+function renderSidebar() {
+  const list = document.getElementById('uploadsList');
+  list.innerHTML = uploads.map(u => `
+    <div class="upload-item ${currentFileId === u.file_id ? 'active' : ''}" onclick="selectUpload(${u.file_id}, '${u.filename}')">
+      <div class="upload-item-name">${u.filename}</div>
+      <div class="upload-item-meta"><span class="badge ${u.source_type==='whatsapp'?'badge-wa':'badge-tg'}">${u.source_type}</span><span>${u.message_count} msgs</span></div>
+    </div>
+  `).join('');
+}
+
+// Dashboard
+let _dashboardData = null;
+
+async function loadDashboard(fileId) {
+  const container = document.getElementById('dashboardContent');
+  container.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px">Loading analytics...</div>';
+  try {
+    const res = await fetch(`${API}/messages/${fileId}/dashboard`);
+    _dashboardData = await res.json();
+    renderDashboard();
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#9888;&#65039;</div><div class="empty-state-text">Failed to load analytics</div></div>`;
+  }
+}
+
+function renderBarRows(rows, labelKey, clickHandlerName = null) {
+  if (!rows || !rows.length) return '<div style="color:var(--muted);font-size:12px">No data yet</div>';
+  const max = Math.max(...rows.map(r => r.count || 0), 1);
+  return `<div class="bar-list">${rows.map(r => {
+    const pct = Math.max(4, Math.round(((r.count || 0) / max) * 100));
+    const val = encodeURIComponent(String(r[labelKey] || ''));
+    const clickAttr = clickHandlerName ? `onclick="${clickHandlerName}('${val}')"` : '';
+    const clickCls = clickHandlerName ? 'clickable' : '';
+    return `<div class="bar-row ${clickCls}" ${clickAttr}>
+      <div class="bar-label" title="${r[labelKey]}">${r[labelKey]}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <div class="bar-val">${r.count}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderDashboard() {
+  const container = document.getElementById('dashboardContent');
+  const d = _dashboardData;
+  if (!d || !d.summary) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-text">No dashboard data available</div></div>`;
+    return;
+  }
+
+  const summary = d.summary;
+  const stats = [
+    ['Messages', summary.messages || 0],
+    ['Important', summary.important || 0],
+    ['Attachments', summary.attachments || 0],
+    ['Subjects', summary.subjects || 0],
+    ['Deadlines', summary.upcoming_deadlines || 0],
+  ];
+
+  const deadlinesHtml = (d.deadlines || []).length
+    ? `<div class="deadline-timeline">${d.deadlines.map(x => `
+        <div class="deadline-chip clickable" onclick="dashboardFilterByDeadline('${x.date}')">
+          <div class="deadline-date">${new Date(x.date).toLocaleDateString('en-GB')}</div>
+          <div class="deadline-count">${x.count} message(s)</div>
+        </div>
+      `).join('')}</div>`
+    : '<div style="color:var(--muted);font-size:12px">No parsed deadlines detected</div>';
+
+  container.innerHTML = `
+    <div class="panel-title">Analytics Dashboard</div>
+    <div class="dashboard-grid">
+      ${stats.map(s => `
+        <div class="dash-stat">
+          <div class="dash-stat-value">${s[1]}</div>
+          <div class="dash-stat-label">${s[0]}</div>
+        </div>
+      `).join('')}
+
+      <div class="dash-card dash-col-6">
+        <h4>Messages By Subject (click to search)</h4>
+        ${renderBarRows(d.messages_per_subject || [], 'subject', 'dashboardSearchBySubject')}
+      </div>
+
+      <div class="dash-card dash-col-6">
+        <h4>Attachment Type Breakdown</h4>
+        ${renderBarRows((d.attachment_types || []).map(x => ({ ...x, type: (x.type || 'unknown').toUpperCase() })), 'type')}
+      </div>
+
+      <div class="dash-card dash-col-6">
+        <h4>Most Active Senders (click to search)</h4>
+        ${renderBarRows(d.top_senders || [], 'sender', 'dashboardSearchBySender')}
+      </div>
+
+      <div class="dash-card dash-col-6">
+        <h4>Deadline Timeline</h4>
+        ${deadlinesHtml}
+      </div>
+    </div>
+  `;
+}
+
+function dashboardSearchBySender(encodedSender) {
+  const sender = decodeURIComponent(encodedSender || '');
+  const input = document.getElementById('searchInput');
+  if (!input) return;
+  input.value = sender;
+  switchTab('search', tabButtonFor('search'), true);
+  doSearch();
+}
+
+
+function dashboardSearchBySubject(encodedSubject) {
+  const subject = decodeURIComponent(encodedSubject || '');
+  const input = document.getElementById('searchInput');
+  if (!input) return;
+  input.value = subject;
+  switchTab('search', tabButtonFor('search'), true);
+  doSearch();
+}
+
+function dashboardFilterByDeadline(dateIso) {
+  _importantDeadlineFilter = dateIso || null;
+  switchTab('important', tabButtonFor('important'), true);
+  if (currentFileId) loadImportant(currentFileId);
+}
+
+function selectUpload(fileId, filename) {
+  if (currentFileId !== fileId) expandedFolders.clear();
+  currentFileId = fileId;
+  renderSidebar();
+  document.getElementById('headerTitle').innerHTML = `<span class="dim">/ </span>${filename}`;
+  switchTab('files');
+  loadDeadlineAlerts(fileId);
+}
+
+async function loadDeadlineAlerts(fileId) {
+  const strip = document.getElementById('deadlineAlerts');
+  if (!strip || !fileId) return;
+  try {
+    // Try upcoming deadlines (next 365 days) first
+    const res = await fetch(`${API}/messages/${fileId}/deadlines/upcoming?days=365`);
+    const data = await res.json();
+    _upcomingAlerts = data.items || [];
+
+    // If nothing upcoming, fall back to all important messages that have any deadline
+    if (!_upcomingAlerts.length) {
+      const res2 = await fetch(`${API}/messages/${fileId}/important`);
+      const imp = await res2.json();
+      // Build alert items from important messages that have a parsed deadline date
+      _upcomingAlerts = imp
+        .filter(m => m.deadline_iso)
+        .map(m => ({
+          deadline: m.deadline_iso,
+          days_left: Math.ceil((new Date(m.deadline_iso) - new Date()) / 86400000),
+          snippet: (m.content || '').slice(0, 120),
+          sender: m.sender,
+        }));
+    }
+
+    renderDeadlineAlerts();
+  } catch (_) {
+    strip.classList.remove('visible');
+  }
+}
+
+function renderDeadlineAlerts() {
+  const strip = document.getElementById('deadlineAlerts');
+  if (!strip) return;
+
+  if (!_upcomingAlerts.length) {
+    strip.classList.remove('visible');
+    return;
+  }
+
+  // Drop overdue — no point showing chips for past dates
+  const upcoming = _upcomingAlerts.filter(a => a.days_left >= 0);
+
+  // All deadlines are past — show a subtle note so user knows detection worked
+  if (!upcoming.length) {
+    strip.classList.add('visible');
+    strip.innerHTML = `
+      <span class="alert-label">⏰ Deadlines</span>
+      <div class="alert-divider"></div>
+      <span style="font-size:11px;color:var(--muted)">${_upcomingAlerts.length} detected &mdash; all passed</span>
+    `;
+    return;
+  }
+
+  // Latest date first
+  const sorted = [...upcoming].sort((a, b) => new Date(b.deadline) - new Date(a.deadline));
+
+  const chips = sorted.map(a => {
+    const d = new Date(a.deadline);
+    const label = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const days  = a.days_left;
+    const cls   = days <= 2 ? 'urgent' : '';
+    const suffix = days === 0 ? 'today' : `${days}d`;
+    return `<button class="alert-chip ${cls}" onclick="dashboardFilterByDeadline('${a.deadline}')" title="${(a.snippet||'').replace(/"/g,'&quot;')}">${label} &bull; ${suffix}</button>`;
+  }).join('');
+
+  strip.classList.add('visible');
+  strip.innerHTML = `
+    <span class="alert-label">⏰ Deadlines</span>
+    <div class="alert-divider"></div>
+    <div class="alert-items">${chips}</div>
+  `;
+}
+
+
+// theme toggling -------------------------------------------------------------
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  setTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+// apply saved theme on start
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('theme') || 'dark';
+  setTheme(saved);
+});
+
+// mobile sidebar toggle
+function toggleMobileSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('mobileOverlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('visible');
+}
+
+async function loadFiles(fileId) {
+  const container = document.getElementById('filesContent');
+  try {
+    const res = await fetch(`${API}/messages/${fileId}/attachments`);
+    const files = await res.json();
+    _latestAttachments = files;
+    if (!files.length) { container.innerHTML = '<div class="empty-state">No files found</div>'; return; }
+    const tree = buildTree(files);
+    container.innerHTML = `
+      <div class="panel-title">Academic Vault</div>
+      <div class="tree-container">
+        <div class="tree-header">
+          <span>Structure</span>
+          <div class="tree-actions">
+            <button class="action-btn" onclick="promptNewFolder([])">+ Category</button>
+            <button class="action-btn" onclick="openCustomUploadModal()">&#x1F4E4; Upload File</button>
+            <button class="action-btn" onclick="openShareStructureModal()">Share Structure</button>
+            <button class="action-btn" onclick="collapseAll()">Collapse</button>
+          </div>
+        </div>
+        <div class="tree-body">${renderTree(tree)}</div>
+      </div>
+    `;
+    // Setup drag-and-drop on custom upload drop zone
+    setupCustomUploadDrop();
+  } catch (err) { container.innerHTML = 'Error loading files'; }
+}
+
+function buildTree(files) {
+  const tree = {};
+  files.forEach(f => {
+    const parts = f.storage_path.replace(/\\/g, '/').split('/');
+    let node = tree;
+    parts.forEach((part, i) => {
+      if (i === parts.length - 1) { if (!node._files) node._files = []; node._files.push(f); }
+      else { if (!node[part]) node[part] = {}; node = node[part]; }
+    });
+  });
+  return tree;
+}
+
+function renderTree(node, depth = 0, currentPath = []) {
+  let html = '';
+  const keys = Object.keys(node).filter(k => k !== '_files').sort();
+  keys.forEach(key => {
+    const path = [...currentPath, key];
+    const pathStr = path.join(' > ');
+    const isExpanded = expandedFolders.has(pathStr);
+    const arrow = isExpanded ? '\u25BE' : '\u25B8';
+    const isCategory = depth === 0;
+
+    html += `
+      <div class="tree-node">
+        <div class="tree-row folder-row" 
+             data-path='${JSON.stringify(path)}' 
+             onclick="toggleNode(this)"
+             ondragover="handleDragOver(event, this)"
+             ondragleave="handleDragLeave(event, this)"
+             ondrop="handleDrop(event, this)">
+          <span class="tree-arrow">${arrow}</span>
+          <span class="tree-icon">${isCategory ? getCategoryIcon(key) : '\uD83D\uDCC1'}</span>
+          <span class="tree-name">${key}</span>
+          <div class="row-actions">
+            <button class="row-action-btn" title="Upload file here" onclick="event.stopPropagation(); openCustomUploadModal(JSON.parse(this.closest('.tree-row').getAttribute('data-path')))">&#x1F4E4;</button>
+            <button class="row-action-btn" title="Add folder" onclick="event.stopPropagation(); promptNewFolder(JSON.parse(this.closest('.tree-row').getAttribute('data-path')))">&#43;</button>
+            <button class="row-action-btn delete" title="Delete folder" onclick="event.stopPropagation(); deleteFolder(JSON.parse(this.closest('.tree-row').getAttribute('data-path')))">&#x1F5D1;&#xFE0F;</button>
+          </div>
+        </div>
+        <div class="tree-children ${isExpanded ? '' : 'collapsed'}">${renderTree(node[key], depth + 1, path)}</div>
+      </div>
+    `;
+  });
+  if (node._files) {
+    node._files.forEach(f => {
+      if (f.original_name === '.keep' || f.original_name.startsWith('.keep_')) return;
+      html += `
+        <div class="tree-row file-row" data-aid="${f.id}" draggable="true" ondragstart="handleDragStart(event, ${f.id}, '${f.original_name}')" ondragend="handleDragEnd(event, this)">
+          <span class="tree-arrow"></span>
+          <span class="tree-icon" onclick="openAttachment(${currentFileId}, ${f.id})">${getFileIcon(f.original_name)}</span>
+          <span class="tree-name" onclick="openAttachment(${currentFileId}, ${f.id})">${f.original_name}</span>
+          <div class="row-actions">
+            <button class="row-action-btn" title="Note &amp; Tags" onclick="toggleNotePanel(${f.id}, this)">&#x1F4DD;</button>
+            <button class="row-action-btn" title="Edit" onclick="promptEdit(${f.id},'${f.original_name}','${f.category}','${f.subject}','${f.subcategory||''}')">&#x270F;&#xFE0F;</button>
+            <button class="row-action-btn delete" title="Delete" onclick="deleteFile(${f.id},'${f.original_name}')">&#x1F5D1;&#xFE0F;</button>
+          </div>
+        </div>
+        <div class="note-panel" id="note-panel-${f.id}">
+          <textarea class="note-textarea" id="note-txt-${f.id}" placeholder="Add a note about this file..." onblur="saveNote(${f.id})">${(f.note||'').replace(/`/g,'\\`')}</textarea>
+          <div class="note-tags-row" id="note-tags-${f.id}">
+            ${(f.tags||[]).map(t => `<span class="note-tag">#${t}<span class="note-tag-del" onclick="removeTag(${f.id},'${t}')">&times;</span></span>`).join('')}
+            <input class="note-tag-input" placeholder="+ tag" id="note-tag-input-${f.id}" onkeydown="handleTagInput(event,${f.id})">
+            <button class="note-delete-btn" onclick="deleteNote(${f.id})">Delete note</button>
+            <span class="note-save-indicator" id="note-saved-${f.id}">&#10003; saved</span>
+          </div>
+        </div>
+      `;
+    });
+  }
+  return html;
+}
+
+function toggleNode(el) {
+  const children = el.nextElementSibling;
+  const arrow = el.querySelector('.tree-arrow');
+  const pathStr = JSON.parse(el.getAttribute('data-path')).join(' > ');
+  const isExpanded = !children.classList.contains('collapsed');
+  if (isExpanded) { expandedFolders.delete(pathStr); children.classList.add('collapsed'); arrow.textContent = '\u25B8'; }
+  else { expandedFolders.add(pathStr); children.classList.remove('collapsed'); arrow.textContent = '\u25BE'; }
+}
+
+function applyHighlights() {
+  if (!pendingHighlightIds.length) return;
+  const idSet = new Set(pendingHighlightIds);
+  const highlighted = [];
+
+  document.querySelectorAll('.file-row[data-aid]').forEach(el => {
+    if (idSet.has(parseInt(el.dataset.aid))) {
+      el.classList.add('file-new');
+      highlighted.push(el);
+      // Expand all ancestor tree-children and mark ancestor folder rows
+      let ancestor = el.parentElement;
+      while (ancestor) {
+        if (ancestor.classList.contains('tree-children')) {
+          ancestor.classList.remove('collapsed');
+          const folderRow = ancestor.previousElementSibling;
+          if (folderRow && folderRow.classList.contains('folder-row')) {
+            folderRow.querySelector('.tree-arrow').textContent = '\u25BE';
+            const pathData = folderRow.getAttribute('data-path');
+            if (pathData) expandedFolders.add(JSON.parse(pathData).join(' > '));
+            folderRow.classList.add('folder-new');
+          }
+        }
+        ancestor = ancestor.parentElement;
+      }
+    }
+  });
+
+  if (highlighted.length) {
+    highlighted[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => {
+      document.querySelectorAll('.file-new, .folder-new').forEach(el =>
+        el.classList.remove('file-new', 'folder-new')
+      );
+    }, 5000);
+  }
+  pendingHighlightIds = [];
+}
+
+function collapseAll() { expandedFolders.clear(); loadFiles(currentFileId); }
+
+function _formatTreeText(node, prefix = '', isRoot = true) {
+  let out = '';
+  const keys = Object.keys(node).filter(k => k !== '_files').sort();
+  keys.forEach((k, idx) => {
+    const isLastFolder = idx === keys.length - 1 && !(node._files && node._files.length);
+    const branch = isRoot ? '' : (isLastFolder ? '\u2514\u2500\u2500 ' : '\u251C\u2500\u2500 ');
+    out += `${prefix}${branch}${k}/\n`;
+    const nextPrefix = isRoot ? '' : (prefix + (isLastFolder ? '    ' : '\u2502   '));
+    out += _formatTreeText(node[k], nextPrefix, false);
+  });
+
+  const visibleFiles = (node._files || []).filter(f => !(f.original_name === '.keep' || f.original_name.startsWith('.keep_')));
+  visibleFiles.forEach((f, idx) => {
+    const isLast = idx === visibleFiles.length - 1;
+    const branch = isLast ? '\u2514\u2500\u2500 ' : '\u251C\u2500\u2500 ';
+    out += `${prefix}${branch}${f.original_name}\n`;
+  });
+  return out;
+}
+
+function generateShareStructureText() {
+  const files = _latestAttachments || [];
+  const tree = buildTree(files);
+  const now = new Date().toLocaleString('en-GB');
+  const visibleCount = files.filter(f => !(f.original_name === '.keep' || f.original_name.startsWith('.keep_'))).length;
+  const head = [
+    'StudyVault Folder Structure Share',
+    `Generated: ${now}`,
+    `Total files: ${visibleCount}`,
+    '',
+  ].join('\n');
+  return head + _formatTreeText(tree, '', true);
+}
+
+function openShareStructureModal() {
+  const txt = document.getElementById('shareStructureText');
+  if (!txt) return;
+  txt.value = generateShareStructureText();
+  document.getElementById('shareStructureModal').classList.add('visible');
+}
+
+function closeShareStructureModal() {
+  document.getElementById('shareStructureModal').classList.remove('visible');
+}
+
+async function copyShareStructure() {
+  const txt = document.getElementById('shareStructureText');
+  if (!txt) return;
+  try {
+    await navigator.clipboard.writeText(txt.value || '');
+    showToast('Structure copied');
+  } catch (_) {
+    txt.select();
+    document.execCommand('copy');
+    showToast('Structure copied');
+  }
+}
+
+function downloadShareStructure() {
+  const txt = document.getElementById('shareStructureText');
+  if (!txt) return;
+  const blob = new Blob([txt.value || ''], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `studyvault-structure-${new Date().toISOString().slice(0,10)}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Custom file upload ----------------------------------------------------------
+let _customUploadFile = null;
+
+function openCustomUploadModal(path) {
+  _customUploadFile = null;
+  document.getElementById('customFileInput').value = '';
+  document.getElementById('customUploadDropLabel').textContent = 'Click or drop a file here';
+  document.getElementById('customCategory').value = path ? (path[0] || '') : '';
+  document.getElementById('customSubject').value = path ? (path[1] || '') : '';
+  document.getElementById('customSubcategory').value = path ? (path[2] || '') : '';
+  document.getElementById('customUploadModal').classList.add('visible');
+}
+
+function closeCustomUploadModal() {
+  document.getElementById('customUploadModal').classList.remove('visible');
+}
+
+function onCustomFileChosen(input) {
+  if (input.files[0]) {
+    _customUploadFile = input.files[0];
+    document.getElementById('customUploadDropLabel').textContent = `\u2713 ${_customUploadFile.name}`;
+  }
+}
+
+function setupCustomUploadDrop() {
+  const drop = document.getElementById('customUploadDrop');
+  if (!drop) return;
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-active'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-active'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault(); drop.classList.remove('drag-active');
+    const f = e.dataTransfer.files[0];
+    if (f) { _customUploadFile = f; document.getElementById('customUploadDropLabel').textContent = `\u2713 ${f.name}`; }
+  });
+}
+
+async function confirmCustomUpload() {
+  if (!_customUploadFile) { showToast('Please choose a file', 'error'); return; }
+  const category = document.getElementById('customCategory').value.trim();
+  const subject = document.getElementById('customSubject').value.trim();
+  if (!category || !subject) { showToast('Category and Subject are required', 'error'); return; }
+  const subcategory = document.getElementById('customSubcategory').value.trim();
+
+  const fd = new FormData();
+  fd.append('file', _customUploadFile);
+  fd.append('category', category);
+  fd.append('subject', subject);
+  fd.append('subcategory', subcategory);
+
+  const btn = document.querySelector('#customUploadModal .btn-primary');
+  btn.textContent = 'Uploading...'; btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API}/messages/${currentFileId}/custom-upload`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.detail || 'Upload failed', 'error'); return; }
+    closeCustomUploadModal();
+    showToast(`\u2713 ${_customUploadFile.name} uploaded`);
+    // Expand the destination path and highlight the new file
+    const path = [category, subject]; if (subcategory) path.push(subcategory);
+    path.forEach((_, i) => expandedFolders.add(path.slice(0, i + 1).join(' > ')));
+    pendingHighlightIds = [data.attachment_id];
+    await loadFiles(currentFileId);
+    applyHighlights();
+  } catch (e) {
+    showToast('Upload failed', 'error');
+  } finally {
+    btn.textContent = 'Upload'; btn.disabled = false;
+  }
+}
+
+function getCategoryIcon(cat) { 
+  const icons = {
+    Notes: '\uD83D\uDCDD',
+    Assignments: '\uD83D\uDCCB',
+    Exams: '\uD83D\uDCC4',
+    Attendance: '\u2705',
+    Resources: '\uD83D\uDCDA',
+    Other: '\uD83D\uDCE6',
+    Images: '\uD83D\uDDBC\uFE0F'
+  };
+  return icons[cat] || '\uD83D\uDCC1';
+}
+function getFileIcon(n) { 
+  const ext = n.split('.').pop().toLowerCase();
+  const icons = {
+    pdf: '\uD83D\uDCD5',
+    docx: '\uD83D\uDCD8',
+    doc: '\uD83D\uDCD8',
+    xlsx: '\uD83D\uDCD7',
+    pptx: '\uD83D\uDCD9',
+    png: '\uD83D\uDDBC\uFE0F',
+    jpg: '\uD83D\uDDBC\uFE0F',
+    jpeg: '\uD83D\uDDBC\uFE0F'
+  };
+  return icons[ext] || '\uD83D\uDCC4';
+}
+function formatSize(b) { return b ? (b/1024).toFixed(1) + 'KB' : ''; }
+
+// Folder Logic
+function promptNewFolder(parentPath) {
+  const input = document.getElementById('newFolderName');
+  input.value = '';
+  document.getElementById('folderModalTitle').textContent = parentPath.length ? 'New Folder' : 'New Category';
+  document.getElementById('confirmFolderBtn').onclick = async () => {
+    const name = input.value.trim(); if (!name) return;
+    let payload = { category: name, subject: 'General' };
+    if (parentPath.length === 1) { payload.category = parentPath[0]; payload.subject = name; }
+    else if (parentPath.length === 2) { payload.category = parentPath[0]; payload.subject = parentPath[1]; payload.subcategory = name; }
+    await fetch(`${API}/messages/${currentFileId}/folders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    expandedFolders.add([...parentPath, name].join(' > '));
+    closeFolderModal(); loadFiles(currentFileId);
+  };
+  document.getElementById('folderModal').classList.add('visible');
+}
+function closeFolderModal() { document.getElementById('folderModal').classList.remove('visible'); }
+
+async function deleteFolder(path) {
+  if (!confirm('Delete folder and files?')) return;
+  const p = new URLSearchParams({ category: path[0] });
+  if (path[1]) p.append('subject', path[1]); if (path[2]) p.append('subcategory', path[2]);
+  await fetch(`${API}/messages/${currentFileId}/folders?${p.toString()}`, { method: 'DELETE' });
+  loadFiles(currentFileId);
+}
+
+// Drag and drop handlers
+let draggedFileId = null;
+let expandTimer = null;
+function handleDragStart(e, id, name) { draggedFileId = id; e.currentTarget.classList.add('dragging'); }
+function handleDragEnd(e, el) { el.classList.remove('dragging'); clearTimeout(expandTimer); }
+function handleDragOver(e, el) {
+  e.preventDefault(); el.classList.add('drag-over');
+  const children = el.nextElementSibling;
+  if (children && children.classList.contains('collapsed')) {
+    if (!expandTimer) expandTimer = setTimeout(() => { children.classList.remove('collapsed'); }, 600);
+  }
+}
+function handleDragLeave(e, el) { el.classList.remove('drag-over'); clearTimeout(expandTimer); expandTimer = null; }
+async function handleDrop(e, el) {
+  e.preventDefault(); el.classList.remove('drag-over');
+  const path = JSON.parse(el.getAttribute('data-path'));
+  const payload = { category: path[0], subject: path[1] || 'General', subcategory: path[2] || null };
+  await fetch(`${API}/messages/${currentFileId}/attachments/${draggedFileId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  loadFiles(currentFileId);
+}
+
+function promptEdit(id, n, c, s, sc) {
+  document.getElementById('moveAttachmentId').value = id;
+  document.getElementById('moveFilename').value = n;
+  document.getElementById('moveCategory').value = c;
+  document.getElementById('moveSubject').value = s;
+  document.getElementById('moveSubcategory').value = sc;
+  document.getElementById('moveModal').classList.add('visible');
+}
+function closeMoveModal() { document.getElementById('moveModal').classList.remove('visible'); }
+async function confirmMove() {
+  const id = document.getElementById('moveAttachmentId').value;
+  const payload = { filename: document.getElementById('moveFilename').value, category: document.getElementById('moveCategory').value, subject: document.getElementById('moveSubject').value, subcategory: document.getElementById('moveSubcategory').value || null };
+  await fetch(`${API}/messages/${currentFileId}/attachments/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  closeMoveModal(); loadFiles(currentFileId);
+}
+
+// Important messages panel
+let _importantMsgs = [];
+let _importantSort = 'newest';
+let _importantDeadlineFilter = null;
+
+function parseDeadlineDate(s, refDate = null) {
+  if (!s) return null;
+  const raw = String(s).trim().replace(/\b(\d{1,2})(st|nd|rd|th)\b/gi, '$1');
+  const ref = refDate ? new Date(refDate) : null;
+  const fallbackYear = ref && !isNaN(ref) ? ref.getFullYear() : new Date().getFullYear();
+
+  // Strict day-first numeric formats: DD/MM[/YY|YYYY] or DD-MM[/YY|YYYY]
+  const num = raw.match(/^(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?$/);
+  if (num) {
+    const d = parseInt(num[1], 10);
+    const m = parseInt(num[2], 10);
+    let y = num[3] ? parseInt(num[3], 10) : fallbackYear;
+    if (y < 100) y += 2000;
+    const dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== (m - 1) || dt.getDate() !== d) return null;
+    return dt;
+  }
+
+  // Month-name variants: "15 Nov 2026" / "Nov 15, 2026"
+  const m1 = raw.match(/^(\d{1,2})\s+([A-Za-z]{3,9})(?:\s*,?\s*(\d{2,4}))?$/);
+  const m2 = raw.match(/^([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{2,4}))?$/i);
+  const monthMap = {
+    jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+    may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7,
+    sep: 8, sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11
+  };
+  if (m1 || m2) {
+    const day = parseInt((m1 ? m1[1] : m2[2]), 10);
+    const monKey = (m1 ? m1[2] : m2[1]).toLowerCase();
+    const month = monthMap[monKey];
+    let year = parseInt((m1 ? m1[3] : m2[3]) || String(fallbackYear), 10);
+    if (year < 100) year += 2000;
+    if (month === undefined) return null;
+    const dt = new Date(year, month, day);
+    if (dt.getFullYear() !== year || dt.getMonth() !== month || dt.getDate() !== day) return null;
+    return dt;
+  }
+
+  // ISO only; avoid locale-specific MM/DD assumptions from Date parsing.
+  if (!/^\d{4}-\d{2}-\d{2}/.test(raw)) return null;
+  const dt = new Date(raw);
+  return isNaN(dt) ? null : dt;
+}
+
+function formatDeadlineForDisplay(s, refDate = null) {
+  const dt = parseDeadlineDate(s, refDate);
+  if (!dt) return escapeHtml(s || '');
+  return dt.toLocaleDateString('en-GB');
+}
+
+function getMessageDeadlineDate(m) {
+  if (m?.deadline_iso) {
+    const dt = new Date(`${m.deadline_iso}T00:00:00`);
+    return isNaN(dt) ? null : dt;
+  }
+  return parseDeadlineDate(m?.detected_deadline, m?.msg_timestamp);
+}
+
+function getDeadlineClass(dt) {
+  if (!dt) return 'deadline-pill';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  const diffDays = Math.round((target - today) / 86400000);
+  if (diffDays < 0) return 'deadline-pill overdue';
+  if (diffDays <= 3) return 'deadline-pill urgent';
+  return 'deadline-pill';
+}
+
+function formatDateToYMD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+async function loadImportant(fileId) {
+  const container = document.getElementById('importantContent');
+  container.innerHTML = `
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-line long"></div>
+      <div class="skeleton skeleton-line medium"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-line long"></div>
+      <div class="skeleton skeleton-line medium"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-line long"></div>
+      <div class="skeleton skeleton-line medium"></div>
+    </div>
+  `;
+  try {
+    const res = await fetch(`${API}/messages/${fileId}/important`);
+    _importantMsgs = await res.json();
+    renderImportant();
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#9888;&#65039;</div><div class="empty-state-text">Failed to load messages</div></div>`;
+  }
+}
+
+function setImportantSort(key) { _importantSort = key; renderImportant(); }
+
+function renderImportant() {
+  const container = document.getElementById('importantContent');
+  if (!_importantMsgs.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#128237;</div><div class="empty-state-text">No important messages found</div></div>`;
+    return;
+  }
+
+  let msgs = [..._importantMsgs];
+  if (_importantDeadlineFilter) {
+    msgs = msgs.filter(m => {
+      const dt = getMessageDeadlineDate(m);
+      return dt && formatDateToYMD(dt) === _importantDeadlineFilter;
+    });
+  }
+
+  if (_importantSort === 'newest') msgs.sort((a, b) => b.id - a.id);
+  if (_importantSort === 'oldest') msgs.sort((a, b) => a.id - b.id);
+  if (_importantSort === 'deadline') {
+    msgs.sort((a, b) => {
+      const da = getMessageDeadlineDate(a), db = getMessageDeadlineDate(b);
+      if (da && db) return db - da;          // latest date first
+      return da ? 1 : db ? -1 : 0;          // nulls at the end
+    });
+  }
+
+  const opts = [['newest','Newest first'],['oldest','Oldest first'],['deadline','By deadline']];
+  const sortBtns = opts.map(([k, l]) =>
+    `<button class="sort-btn ${_importantSort === k ? 'active' : ''}" onclick="setImportantSort('${k}')">${l}</button>`
+  ).join('');
+  const activeFilter = _importantDeadlineFilter
+    ? `<div class="sort-bar" style="margin-top:8px"><span class="sort-label">Deadline filter:</span><span class="sort-btn active">${new Date(_importantDeadlineFilter).toLocaleDateString('en-GB')}</span><button class="sort-btn" onclick="_importantDeadlineFilter=null; renderImportant();">Clear</button></div>`
+    : '';
+
+  container.innerHTML = `
+    <div class="panel-title">Important Messages <span style="font-size:14px;color:var(--muted);font-weight:400">(${msgs.length})</span></div>
+    <div class="sort-bar"><span class="sort-label">Sort:</span>${sortBtns}</div>
+    ${activeFilter}
+    ${msgs.map(m => `
+      <div class="msg-card">
+        <div class="msg-header">
+          <span class="msg-sender">${m.sender || 'Unknown'}</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span class="msg-trigger">${m.trigger_word}</span>
+            ${m.detected_deadline ? `<span class="${getDeadlineClass(getMessageDeadlineDate(m))}">&#128197; ${(m.deadline_display || formatDeadlineForDisplay(m.detected_deadline, m.msg_timestamp))}</span>` : ''}
+            ${m.message_id ? `<button class="row-action-btn" title="Open thread context" onclick="openThreadView(${m.message_id});event.stopPropagation();">&#129525;</button>` : ''}
+          </div>
+        </div>
+        <div class="msg-content">${m.content}</div>
+        ${m.detected_deadline ? `<div class="deadline-meta"><span>Raw: ${escapeHtml(m.detected_deadline || '')}</span>${m.deadline_iso ? `<span>Normalized: ${m.deadline_iso}</span>` : ''}</div>` : ''}
+        ${m.msg_timestamp ? `<div style="margin-top:6px;font-size:10px;color:var(--muted)">${new Date(m.msg_timestamp).toLocaleString('en-GB')}</div>` : ''}
+      </div>
+    `).join('')}
+  `;
+}
+
+// Search
+let _searchData = null;
+let _searchQuery = '';
+let _searchMsgSort  = 'default';
+let _searchFileSort = 'az';
+
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  _searchQuery = q;
+  const container = document.getElementById('searchResults');
+  container.innerHTML = `
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-line long"></div>
+      <div class="skeleton skeleton-line medium"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-line long"></div>
+      <div class="skeleton skeleton-line short"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-line long"></div>
+      <div class="skeleton skeleton-line medium"></div>
+    </div>
+  `;
+  document.getElementById('searchSortBar').style.display = 'none';
+
+  const url = currentFileId
+    ? `${API}/search?q=${encodeURIComponent(q)}&file_id=${currentFileId}&semantic=true`
+    : `${API}/search?q=${encodeURIComponent(q)}&semantic=true`;
+
+  try {
+    const res = await fetch(url);
+    _searchData = await res.json();
+    renderSearch();
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#9888;&#65039;</div><div class="empty-state-text">Search failed</div></div>`;
+  }
+}
+
+function setSearchMsgSort(k)  { _searchMsgSort  = k; renderSearch(); }
+function setSearchFileSort(k) { _searchFileSort = k; renderSearch(); }
+
+function renderSearch() {
+  if (!_searchData) return;
+  const q = _searchQuery;
+  const container = document.getElementById('searchResults');
+  const sortBar = document.getElementById('searchSortBar');
+  const hasMessages = _searchData.messages?.length > 0;
+  const hasFiles    = _searchData.attachments?.length > 0;
+  const searchMode  = _searchData.search_mode || 'keyword';
+
+  if (!hasMessages && !hasFiles) {
+    sortBar.style.display = 'none';
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#128269;</div><div class="empty-state-text">No results for "${q}"</div></div>`;
+    return;
+  }
+
+  // Build sort bar
+  const msgSortOpts  = [['default','Relevance'],['latest','Newest'],['oldest','Oldest']];
+  const fileSortOpts = [['az','A to Z'],['category','By category']];
+
+  let sortHtml = '';
+  if (hasMessages) {
+    sortHtml += `<span class="sort-label">Messages:</span>`
+      + msgSortOpts.map(([k,l]) =>
+          `<button class="sort-btn ${_searchMsgSort===k?'active':''}" onclick="setSearchMsgSort('${k}')">${l}</button>`
+        ).join('');
+  }
+  if (hasMessages && hasFiles) sortHtml += `<span class="sort-divider"></span>`;
+  if (hasFiles) {
+    sortHtml += `<span class="sort-label">Files:</span>`
+      + fileSortOpts.map(([k,l]) =>
+          `<button class="sort-btn ${_searchFileSort===k?'active':''}" onclick="setSearchFileSort('${k}')">${l}</button>`
+        ).join('');
+  }
+  sortBar.innerHTML = sortHtml;
+  sortBar.style.display = 'flex';
+  sortBar.style.marginTop = '12px';
+
+  let html = '';
+  if (_searchData.semantic_unavailable) {
+    html += `<div class="empty-state" style="padding:10px 12px;margin-bottom:12px;border:1px dashed var(--border);text-align:left">
+      <div class="empty-state-text" style="font-size:11px;color:var(--muted)">Semantic model unavailable. Showing keyword results instead.</div>
+    </div>`;
+  }
+
+  if (hasMessages) {
+    const msgs = [..._searchData.messages];
+    switch (_searchMsgSort) {
+      case 'latest':  msgs.sort((a, b) => (b.id||0) - (a.id||0)); break;
+      case 'oldest':  msgs.sort((a, b) => (a.id||0) - (b.id||0)); break;
+    }
+    html += `<div class="search-result-section">
+      <div class="search-result-title">Messages (${msgs.length}) ${searchMode==='semantic' ? '<span style="font-size:11px;color:var(--muted);font-weight:400">semantic</span>' : ''}</div>
+      ${msgs.map(m => `
+        <div class="search-result-item">
+          <span style="color:var(--accent);font-weight:500">${m.role}</span>: ${highlight(m.content, q)}
+          ${typeof m.semantic_score === 'number' ? `<span style="margin-left:6px;font-size:10px;color:var(--muted)">${Math.max(0, Math.min(100, Math.round(m.semantic_score * 100)))}% match</span>` : ''}
+          ${m.is_important ? '<span class="badge badge-wa" style="margin-left:6px">&#9873; important</span>' : ''}
+          ${m.msg_timestamp ? `<div class="path">Sent: ${new Date(m.msg_timestamp).toLocaleString('en-GB')}</div>` : ''}
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  if (hasFiles) {
+    const files = [..._searchData.attachments];
+    switch (_searchFileSort) {
+      case 'za':       files.sort((a, b) => (b.original_name||'').localeCompare(a.original_name||'')); break;
+      case 'category': files.sort((a, b) => (a.category||'').localeCompare(b.category||'')); break;
+      case 'subject':  files.sort((a, b) => (a.subject||'').localeCompare(b.subject||'')); break;
+      default:         files.sort((a, b) => (a.original_name||'').localeCompare(b.original_name||''));
+    }
+    html += `<div class="search-result-section">
+      <div class="search-result-title">Files (${files.length}) ${searchMode==='semantic' ? '<span style="font-size:11px;color:var(--muted);font-weight:400">semantic</span>' : ''}</div>
+      ${files.map(f => `
+        <div class="search-result-item" onclick="openAttachment(${f.file_id}, ${f.id})" style="cursor:pointer">
+          <div style="display:flex;align-items:center;gap:8px">
+            ${getFileIcon(f.original_name)}
+            <span>${highlight(f.original_name, q)}</span>
+            ${typeof f.semantic_score === 'number' ? `<span style="font-size:10px;color:var(--muted)">${Math.max(0, Math.min(100, Math.round(f.semantic_score * 100)))}%</span>` : ''}
+            <span style="margin-left:auto;font-size:10px;color:var(--muted)">${f.category||''}${f.subject?' / '+f.subject:''}</span>
+          </div>
+          <div class="path">${f.storage_path}</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function highlight(text, q) {
+  if (!text) return '';
+  const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(safe, 'gi'), m => `<mark style="background:rgba(232,163,61,0.25);color:var(--accent);border-radius:3px;padding:1px 2px">${m}</mark>`);
+}
+
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function openThreadView(messageId) {
+  const modal = document.getElementById('threadModal');
+  const content = document.getElementById('threadContent');
+  if (!modal || !content) return;
+  content.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px">Loading context...</div>';
+  modal.classList.add('visible');
+  try {
+    const res = await fetch(`${API}/messages/${currentFileId}/message-context/${messageId}?window=5`);
+    const data = await res.json();
+    const msgs = data.messages || [];
+    if (!msgs.length) {
+      content.innerHTML = '<div class="empty-state">No context found</div>';
+      return;
+    }
+    content.innerHTML = `
+      <div class="thread-wrap">
+        ${msgs.map(m => `
+          <div class="thread-msg ${m.id === data.center_message_id ? 'center' : ''}">
+            <div class="thread-meta">
+              <span>${escapeHtml(m.role || 'Unknown')}</span>
+              <span>#${m.message_order || ''} ${m.msg_timestamp ? '• ' + new Date(m.msg_timestamp).toLocaleString('en-GB') : ''}</span>
+            </div>
+            <div class="thread-content">${escapeHtml(m.content || '')}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (e) {
+    content.innerHTML = '<div class="empty-state">Failed to load thread context</div>';
+  }
+}
+
+function closeThreadModal() {
+  const modal = document.getElementById('threadModal');
+  if (modal) modal.classList.remove('visible');
+}
+
+function deleteFile(id, name) {
+  if (confirm('Delete?')) { fetch(`${API}/messages/${currentFileId}/attachments/${id}`, { method: 'DELETE' }).then(() => loadFiles(currentFileId)); }
+}
+
+// Notes & Tags
+let _noteCache = {}; // {aid: {note, tags}}
+
+function toggleNotePanel(aid, btn) {
+  const panel = document.getElementById(`note-panel-${aid}`);
+  const isOpen = panel.classList.contains('open');
+  // Close all other panels
+  document.querySelectorAll('.note-panel.open').forEach(p => p.classList.remove('open'));
+  if (!isOpen) {
+    panel.classList.add('open');
+    document.getElementById(`note-txt-${aid}`).focus();
+  }
+}
+
+async function saveNote(aid) {
+  const note = document.getElementById(`note-txt-${aid}`).value;
+  const tags = _noteCache[aid]?.tags ?? getTagsFromDOM(aid);
+  _noteCache[aid] = { note, tags };
+  await fetch(`${API}/messages/${currentFileId}/attachments/${aid}/note`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note, tags }),
+  });
+  const ind = document.getElementById(`note-saved-${aid}`);
+  if (ind) { ind.classList.add('show'); setTimeout(() => ind.classList.remove('show'), 2000); }
+}
+
+async function deleteNote(aid) {
+  const txt = document.getElementById(`note-txt-${aid}`);
+  if (!txt) return;
+  txt.value = '';
+  const tags = _noteCache[aid]?.tags ?? getTagsFromDOM(aid);
+  _noteCache[aid] = { note: null, tags };
+  await fetch(`${API}/messages/${currentFileId}/attachments/${aid}/note`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note: null, tags }),
+  });
+  const ind = document.getElementById(`note-saved-${aid}`);
+  if (ind) {
+    ind.textContent = '\u2713 note deleted';
+    ind.classList.add('show');
+    setTimeout(() => {
+      ind.classList.remove('show');
+      ind.textContent = '\u2713 saved';
+    }, 2000);
+  }
+}
+
+function getTagsFromDOM(aid) {
+  const row = document.getElementById(`note-tags-${aid}`);
+  if (!row) return [];
+  return [...row.querySelectorAll('.note-tag')].map(el => el.textContent.replace('×','').replace(/^#/,'').trim());
+}
+
+function handleTagInput(event, aid) {
+  if (event.key === 'Enter' || event.key === ',') {
+    event.preventDefault();
+    const input = document.getElementById(`note-tag-input-${aid}`);
+    const val = input.value.replace(/,/g,'').trim();
+    if (!val) return;
+    input.value = '';
+    const tags = getTagsFromDOM(aid);
+    if (tags.includes(val)) return;
+    tags.push(val);
+    _noteCache[aid] = { note: document.getElementById(`note-txt-${aid}`).value, tags };
+    renderTagsDOM(aid, tags);
+    saveNote(aid);
+  }
+}
+
+function removeTag(aid, tag) {
+  let tags = getTagsFromDOM(aid).filter(t => t !== tag);
+  _noteCache[aid] = { note: document.getElementById(`note-txt-${aid}`)?.value || '', tags };
+  renderTagsDOM(aid, tags);
+  saveNote(aid);
+}
+
+function renderTagsDOM(aid, tags) {
+  const row = document.getElementById(`note-tags-${aid}`);
+  if (!row) return;
+  const input = row.querySelector('.note-tag-input').outerHTML;
+  const saved = row.querySelector('.note-save-indicator').outerHTML;
+  row.innerHTML = tags.map(t =>
+    `<span class="note-tag">#${t}<span class="note-tag-del" onclick="removeTag(${aid},'${t}')">&times;</span></span>`
+  ).join('') + input + saved;
+}
+
+function openAttachment(fid, aid) { window.open(`${API}/messages/${fid}/attachments/${aid}`); }
+
+function showToast(m, t='success') {
+  const el = document.createElement('div'); el.className = `toast toast-${t}`; el.textContent = m;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 3000);
+}
+// === RAG UI Logic ===
+async function loadRagStatus() {
+  if (!currentFileId) return;
+  try {
+    const res = await fetch(`${API}/rag/${currentFileId}/status`);
+    if (!res.ok) return;
+    const data = await res.json();
+    
+    const statusText = document.getElementById('ragStatusText');
+    const input = document.getElementById('ragInput');
+    const btn = document.getElementById('ragSendBtn');
+    const forceBtn = document.getElementById('btnForceIndex');
+    
+    if (data.total_pdf_attachments === 0) {
+      statusText.innerHTML = 'No PDFs to index.';
+      statusText.style.color = 'var(--muted)';
+      input.disabled = true;
+      btn.disabled = true;
+      forceBtn.style.display = 'none';
+    } else if (data.fully_indexed) {
+      statusText.innerHTML = `✅ ${data.indexed_attachments}/${data.total_pdf_attachments} PDFs indexed (${data.total_chunks} chunks)`;
+      statusText.style.color = 'var(--success)';
+      input.disabled = false;
+      btn.disabled = false;
+      forceBtn.style.display = 'none';
+    } else {
+      statusText.innerHTML = `⚠️ ${data.indexed_attachments}/${data.total_pdf_attachments} PDFs indexed. Questions may be missing context.`;
+      statusText.style.color = 'var(--warning)';
+      input.disabled = false;
+      btn.disabled = false;
+      forceBtn.style.display = 'block';
+    }
+  } catch (err) {
+    console.error("RAG status error:", err);
+  }
+}
+
+async function forceRagIndex() {
+  if (!currentFileId) return;
+  const forceBtn = document.getElementById('btnForceIndex');
+  forceBtn.disabled = true;
+  forceBtn.innerText = "Indexing...";
+  try {
+    const res = await fetch(`${API}/rag/${currentFileId}/index`, { method: 'POST' });
+    const data = await res.json();
+    showToast(data.message, 'success');
+    loadRagStatus();
+  } catch (err) {
+    showToast('Indexing failed', 'error');
+    forceBtn.disabled = false;
+    forceBtn.innerText = "Index Documents";
+  }
+}
+
+function appendRagMessage(text, role, sources = []) {
+  const chatArea = document.getElementById('ragChatArea');
+  const emptyState = document.getElementById('ragEmptyState');
+  if (emptyState) emptyState.style.display = 'none';
+  
+  const msgDiv = document.createElement('div');
+  msgDiv.style.padding = '12px 16px';
+  msgDiv.style.borderRadius = '12px';
+  msgDiv.style.maxWidth = '85%';
+  msgDiv.style.fontSize = '13px';
+  msgDiv.style.lineHeight = '1.5';
+  msgDiv.style.animation = 'slideIn 0.3s ease';
+  
+  if (role === 'user') {
+    msgDiv.style.background = 'rgba(232,163,61,0.15)';
+    msgDiv.style.border = '1px solid rgba(232,163,61,0.3)';
+    msgDiv.style.alignSelf = 'flex-end';
+    msgDiv.style.color = 'var(--text)';
+    msgDiv.innerHTML = escapeHtml(text);
+  } else {
+    msgDiv.style.background = 'linear-gradient(135deg, var(--surface), var(--surface2))';
+    msgDiv.style.border = '1px solid var(--border)';
+    msgDiv.style.alignSelf = 'flex-start';
+    msgDiv.style.color = 'var(--text)';
+    
+    let html = escapeHtml(text).replace(/\\n/g, '<br>');
+    if (sources && sources.length > 0) {
+      html += `<div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:11px; color:var(--muted)">`;
+      html += `<strong style="color:var(--accent)">Sources:</strong><ul style="margin:5px 0 0 20px; padding:0">`;
+      sources.forEach(s => {
+        html += `<li style="margin-bottom:4px; cursor:pointer; text-decoration:underline;" onclick="openAttachment(${currentFileId}, ${s.attachment_id})" title="${escapeHtml(s.snippet)}" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">${escapeHtml(s.filename)} (Page ${s.page})</li>`;
+      });
+      html += `</ul></div>`;
+    }
+    msgDiv.innerHTML = html;
+  }
+  
+  chatArea.appendChild(msgDiv);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+async function sendRagQuestion() {
+  if (!currentFileId) return;
+  const input = document.getElementById('ragInput');
+  const btn = document.getElementById('ragSendBtn');
+  const question = input.value.trim();
+  if (!question) return;
+  
+  input.value = '';
+  input.disabled = true;
+  btn.disabled = true;
+  
+  appendRagMessage(question, 'user');
+  
+  // Add loading bubble
+  const chatArea = document.getElementById('ragChatArea');
+  const loadingDiv = document.createElement('div');
+  loadingDiv.id = 'ragLoadingBubble';
+  loadingDiv.style.padding = '12px 16px';
+  loadingDiv.style.borderRadius = '12px';
+  loadingDiv.style.alignSelf = 'flex-start';
+  loadingDiv.style.background = 'transparent';
+  loadingDiv.innerHTML = `<span style="display:inline-block; animation: shimmer 1.5s infinite; color:var(--accent)">Thinking...</span>`;
+  chatArea.appendChild(loadingDiv);
+  chatArea.scrollTop = chatArea.scrollHeight;
+  
+  try {
+    const res = await fetch(`${API}/rag/${currentFileId}/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question })
+    });
+    
+    document.getElementById('ragLoadingBubble')?.remove();
+    
+    if (res.ok) {
+      const data = await res.json();
+      appendRagMessage(data.answer, 'ai', data.sources);
+    } else {
+      const err = await res.json();
+      appendRagMessage(`Error: ${err.detail || 'Could not get answer'}`, 'ai');
+    }
+  } catch (err) {
+    document.getElementById('ragLoadingBubble')?.remove();
+    appendRagMessage(`Network error: ${err.message}`, 'ai');
+  } finally {
+    input.disabled = false;
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+</script>
+</body>
+</html>
+

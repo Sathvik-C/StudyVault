@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyVault | WhatsApp/Telegram Academic Organizer</title>
+  <meta name="description" content="Turn chaotic WhatsApp or Telegram college groups into a structured academic vault. Powered by FastAPI, RAG, and advanced OCR.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      --bg-base: #14151F;
+      --bg-raised: #1F2031;
+      --bg-hover: #262738;
+      --text-primary: #EDEDF2;
+      --text-secondary: #8B8D9E;
+      --text-muted: #5D5F70;
+      --accent: #E8A33D;
+      --accent-bg: rgba(232,163,61,0.10);
+      --accent-border: rgba(232,163,61,0.22);
+      --border: #282A3A;
+      --font-serif: 'Fraunces', serif;
+      --font-sans: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-base);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    a { text-decoration: none; color: inherit; }
+
+    /* Layout & Containers */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* Navbar */
+    header { padding: 24px 0; border-bottom: 1px solid var(--border); }
+    .nav-inner { display: flex; justify-content: space-between; align-items: center; }
+    .brand { font-family: var(--font-serif); font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .brand i { color: var(--accent); }
+    .nav-links { display: flex; gap: 24px; font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+    .nav-links a:hover { color: var(--text-primary); }
+    .github-link { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; transition: all 0.2s; }
+    .github-link:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+
+    /* Hero Section */
+    .hero { padding: 100px 0 80px; text-align: center; }
+    .tagline { display: inline-block; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); background: var(--accent-bg); padding: 6px 12px; border-radius: 4px; margin-bottom: 24px; }
+    .hero h1 { font-family: var(--font-serif); font-size: 56px; line-height: 1.1; font-weight: 600; margin-bottom: 24px; letter-spacing: -0.02em; }
+    .hero p { font-size: 18px; color: var(--text-secondary); max-width: 650px; margin: 0 auto 40px; }
+    .cta-group { display: flex; justify-content: center; gap: 16px; }
+    .btn-primary { background: var(--accent); color: var(--bg-base); padding: 12px 24px; border-radius: 6px; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: transform 0.2s, background 0.2s; }
+    .btn-primary:hover { background: #f0b04a; transform: translateY(-2px); }
+    .btn-secondary { background: var(--bg-raised); color: var(--text-primary); padding: 12px 24px; border: 1px solid var(--border); border-radius: 6px; font-weight: 500; transition: all 0.2s; }
+    .btn-secondary:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+
+    /* Problem vs Solution */
+    .problem-solution { padding: 100px 0; border-top: 1px solid var(--border); }
+    .ps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+    .ps-card { padding: 40px; border-radius: 12px; border: 1px solid var(--border); }
+    .ps-card.problem { background: rgba(255,100,100,0.02); border-color: rgba(255,100,100,0.1); }
+    .ps-card.solution { background: var(--accent-bg); border-color: var(--accent-border); }
+    .ps-card h3 { font-family: var(--font-serif); font-size: 24px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+    .problem h3 { color: #ff8b8b; }
+    .solution h3 { color: var(--accent); }
+    .ps-card p { color: var(--text-secondary); margin-bottom: 24px; }
+    .ps-list { list-style: none; }
+    .ps-list li { margin-bottom: 12px; display: flex; gap: 12px; font-size: 15px; }
+    .problem .ps-list i { color: #ff8b8b; }
+    .solution .ps-list i { color: var(--accent); }
+
+    /* Features Section */
+    .features { padding: 80px 0; }
+    .section-header { text-align: center; margin-bottom: 60px; }
+    .section-header h2 { font-family: var(--font-serif); font-size: 36px; margin-bottom: 16px; }
+    .section-header p { color: var(--text-secondary); font-size: 18px; max-width: 600px; margin: 0 auto; }
+    
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .feature-card { background: var(--bg-raised); padding: 32px; border: 1px solid var(--border); border-radius: 12px; transition: transform 0.2s; }
+    .feature-card:hover { transform: translateY(-4px); border-color: var(--accent-border); }
+    .feature-icon { width: 48px; height: 48px; background: var(--bg-hover); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; color: var(--accent); }
+    .feature-card h4 { font-size: 18px; margin-bottom: 12px; font-weight: 600; }
+    .feature-card p { color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+
+    /* Tech Architecture Deep Dive */
+    .tech-architecture { padding: 100px 0; border-top: 1px solid var(--border); background: var(--bg-raised); }
+    .arch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
+    .arch-layer { border-left: 2px solid var(--accent); padding-left: 24px; margin-bottom: 32px; }
+    .arch-layer h4 { font-family: var(--font-mono); font-size: 16px; margin-bottom: 12px; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+    .arch-layer p { color: var(--text-secondary); font-size: 14px; margin-bottom: 16px; }
+    .tech-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tech-tag { font-family: var(--font-mono); font-size: 12px; padding: 4px 10px; background: var(--bg-base); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); }
+
+    /* Footer */
+    footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 14px; }
+
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 40px; }
+      .ps-grid, .features-grid, .arch-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="container nav-inner">
+      <div class="brand"><i data-lucide="book-open"></i> StudyVault</div>
+      <nav class="nav-links">
+        <a href="#problem">The Problem</a>
+        <a href="#features">Features</a>
+        <a href="#architecture">Architecture</a>
+        <a href="https://github.com" target="_blank" class="github-link"><i data-lucide="github"></i> Source Code</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero container">
+    <div class="tagline">Intelligent Academic Pipeline</div>
+    <h1>Turn Chaotic WhatsApp or Telegram Chats into<br>Structured Academic Vaults.</h1>
+    <p>An advanced backend pipeline that ingests WhatsApp or Telegram exports, runs OCR on handwritten notes, generates semantic RAG embeddings, and organizes academic materials using LLMs.</p>
+    <div class="cta-group">
+      <a href="/app" class="btn-primary">
+        View Live Application <i data-lucide="arrow-right"></i>
+      </a>
+      <a href="#architecture" class="btn-secondary">View Architecture</a>
+    </div>
+  </section>
+
+  <section id="problem" class="problem-solution">
+    <div class="container ps-grid">
+      <div class="ps-card problem">
+        <h3><i data-lucide="x-circle"></i> The Academic Chaos</h3>
+        <p>University WhatsApp or Telegram groups are a mix of crucial study materials, casual chatter, and images of handwritten notes. Searching through this unstructured data is nearly impossible.</p>
+        <ul class="ps-list">
+          <li><i data-lucide="alert-circle"></i> Handwritten notes shared as JPGs are unsearchable</li>
+          <li><i data-lucide="alert-circle"></i> Important PDFs (assignments, syllabus) get buried instantly</li>
+          <li><i data-lucide="alert-circle"></i> Context is lost across hundreds of messages</li>
+        </ul>
+      </div>
+      <div class="ps-card solution">
+        <h3><i data-lucide="check-circle"></i> The NLP Solution</h3>
+        <p>Upload a standard WhatsApp or Telegram `.zip` / `.html` or `.json` export. The backend parses the data, runs Optical Character Recognition (OCR) on images, extracts text from PDFs, and uses RAG for semantic search.</p>
+        <ul class="ps-list">
+          <li><i data-lucide="check"></i> Images of notes become fully searchable text</li>
+          <li><i data-lucide="check"></i> LLMs classify documents by subject and type</li>
+          <li><i data-lucide="check"></i> Semantic Search (RAG) retrieves answers instantly</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="features container">
+    <div class="section-header">
+      <h2>Core Engineering Features</h2>
+      <p>Built strictly with production-ready AI and Data Processing pipelines.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><i data-lucide="scan-text"></i></div>
+        <h4>Advanced OCR Pipeline</h4>
+        <p>Integrated PyTesseract and Pillow to automatically extract text from images of handwritten notes and whiteboard snapshots shared in chat.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i data-lucide="file-search"></i></div>
+        <h4>Multi-Format Parsing</h4>
+        <p>Utilizes PyMuPDF, pdfplumber, python-docx, and python-pptx to aggressively extract raw text from any academic document format uploaded to the group.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i data-lucide="database"></i></div>
+        <h4>RAG & Semantic Search</h4>
+        <p>Vectorizes all extracted text using `sentence-transformers`, allowing users to ask natural language questions ("What did the professor say about Midterms?") and retrieve exact context.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i data-lucide="bot"></i></div>
+        <h4>Multi-LLM Integration</h4>
+        <p>Built with an abstraction layer supporting Anthropic (Claude) and Groq. The LLMs are utilized for intelligent text chunk classification and summarization.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i data-lucide="server"></i></div>
+        <h4>High-Performance API</h4>
+        <p>Powered by FastAPI and Uvicorn. Utilizes asynchronous processing to handle heavy I/O operations like parsing large WhatsApp or Telegram exports and running ML inference.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i data-lucide="shield"></i></div>
+        <h4>Relational Integrity</h4>
+        <p>Uses SQLAlchemy and PostgreSQL to maintain strict relationships between original messages, extracted files, vector embeddings, and their generated classifications.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i data-lucide="message-square"></i></div>
+        <h4>Interactive Vault Chatbot</h4>
+        <p>A built-in frontend interface that allows users to chat directly with their academic vault. Get instant answers backed by RAG context.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture" class="tech-architecture">
+    <div class="container">
+      <div class="section-header">
+        <h2>Technical Architecture</h2>
+        <p>A breakdown of the backend processing pipeline.</p>
+      </div>
+      <div class="arch-grid">
+        <div>
+          <div class="arch-layer">
+            <h4><i data-lucide="server"></i> 1. Ingestion & API Layer</h4>
+            <p>FastAPI handles multipart file uploads. The parser strips HTML/JSON from standard WhatsApp or Telegram exports to isolate individual messages, senders, and attached media.</p>
+            <div class="tech-tags">
+              <span class="tech-tag">FastAPI</span>
+              <span class="tech-tag">Uvicorn</span>
+              <span class="tech-tag">python-multipart</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <h4><i data-lucide="cpu"></i> 2. Document & OCR Processing</h4>
+            <p>Attachments are routed to format-specific extractors. Images are passed through Tesseract OCR, while PDFs and Office documents are parsed via specialized libraries.</p>
+            <div class="tech-tags">
+              <span class="tech-tag">PyTesseract</span>
+              <span class="tech-tag">PyMuPDF</span>
+              <span class="tech-tag">python-docx</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="arch-layer">
+            <h4><i data-lucide="network"></i> 3. Embeddings & RAG Engine</h4>
+            <p>Extracted text is chunked and embedded using open-source sentence-transformers, then stored for rapid semantic similarity search across the entire chat history.</p>
+            <div class="tech-tags">
+              <span class="tech-tag">sentence-transformers</span>
+              <span class="tech-tag">numpy</span>
+              <span class="tech-tag">RAG</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <h4><i data-lucide="brain-circuit"></i> 4. LLM Classification</h4>
+            <p>Anthropic Claude and Groq APIs analyze the context to automatically categorize files (e.g., Syllabus, Assignment) and flag important deadlines.</p>
+            <div class="tech-tags">
+              <span class="tech-tag">Anthropic API</span>
+              <span class="tech-tag">Groq API</span>
+              <span class="tech-tag">SQLAlchemy</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2024 StudyVault. Built to solve real academic data problems.</p>
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

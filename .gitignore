@@ -1,0 +1,38 @@
+# ── Environment & Secrets ─────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Python ────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual Environment ──────────────────────────
+venv/
+.venv/
+env/
+
+# ── Uploads & Storage (user data, ephemeral) ─────
+uploads/
+storage/
+*.zip
+
+# ── IDE & OS ─────────────────────────────────────
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Test / Debug artifacts ───────────────────────
+test_chat_export.zip
+debug_db.py
+scratch_*.py
+reset_uploads.py
