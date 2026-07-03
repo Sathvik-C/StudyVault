@@ -3045,14 +3045,22 @@ function appendRagMessage(text, role, sources = []) {
     msgDiv.style.alignSelf = 'flex-start';
     msgDiv.style.color = 'var(--text)';
     
-    let html = escapeHtml(text).replace(/\\n/g, '<br>');
+    // Bold text rendering (simple markdown)
+    let formattedText = escapeHtml(text).replace(/\\n/g, '<br>');
+    formattedText = formattedText.replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>');
+    
+    let html = formattedText;
     if (sources && sources.length > 0) {
-      html += `<div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:11px; color:var(--muted)">`;
-      html += `<strong style="color:var(--accent)">Sources:</strong><ul style="margin:5px 0 0 20px; padding:0">`;
+      html += `<div style="margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:8px;">`;
+      html += `<span style="font-size:12px; color:var(--text); opacity:0.8;"><i class="fa-solid fa-paperclip"></i> Click to open files:</span>`;
+      html += `<div style="display:flex; flex-wrap:wrap; gap:8px;">`;
       sources.forEach(s => {
-        html += `<li style="margin-bottom:4px; cursor:pointer; text-decoration:underline;" onclick="openAttachment(${currentFileId}, ${s.attachment_id})" title="${escapeHtml(s.snippet)}" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">${escapeHtml(s.filename)} (Page ${s.page})</li>`;
+        let pageStr = s.page !== 'N/A' ? ` (Pg ${s.page})` : '';
+        html += `<button onclick="openAttachment(${currentFileId}, ${s.attachment_id})" title="${escapeHtml(s.snippet)}" style="display:flex; align-items:center; gap:6px; background:var(--primary); color:white; border:none; padding:8px 12px; border-radius:8px; font-size:12px; cursor:pointer; font-weight:600; box-shadow:0 2px 4px rgba(0,0,0,0.2); transition:transform 0.1s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                   <i class="fa-solid fa-file-pdf"></i> ${escapeHtml(s.filename)}${pageStr}
+                 </button>`;
       });
-      html += `</ul></div>`;
+      html += `</div></div>`;
     }
     msgDiv.innerHTML = html;
   }
