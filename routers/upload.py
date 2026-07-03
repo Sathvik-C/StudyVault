@@ -81,3 +81,30 @@ async def upload_file(file: UploadFile = File(...)):
         "status": "Upload successful",
         **result,
     }
+
+@router.delete("/{file_id}")
+def delete_file(file_id: int):
+    with engine.begin() as conn:
+        # Delete dependent tables in order to avoid foreign key violations
+        conn.execute(text("DELETE FROM document_chunks WHERE file_id = :fid"), {"fid": file_id})
+        conn.execute(text("DELETE FROM important_messages WHERE file_id = :fid"), {"fid": file_id})
+        conn.execute(text("DELETE FROM attachments WHERE file_id = :fid"), {"fid": file_id})
+        conn.execute(text("DELETE FROM subjects WHERE file_id = :fid"), {"fid": file_id})
+        conn.execute(text("DELETE FROM messages WHERE file_id = :fid"), {"fid": file_id})
+        
+        # Get chat_id before deleting file
+        chat_id = conn.execute(text("SELECT chat_id FROM files WHERE id = :fid"), {"fid": file_id}).scalar()
+        
+        # Finally delete the file
+        conn.execute(text("DELETE FROM files WHERE id = :fid"), {"fid": file_id})
+
+        # Optionally decrement chat stats or delete chat if no files remain
+        if chat_id:
+            remaining = conn.execute(text("SELECT COUNT(*) FROM files WHERE chat_id = :cid"), {"cid": chat_id}).scalar()
+            if remaining == 0:
+                conn.execute(text("DELETE FROM chats WHERE id = :cid"), {"cid": chat_id})
+            else:
+                conn.execute(text("UPDATE chats SET total_files = total_files - 1 WHERE id = :cid"), {"cid": chat_id})
+
+    return {"status": "deleted", "file_id": file_id}
+

@@ -216,6 +216,9 @@
     margin-bottom: 6px;
     background: var(--ink-soft);
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   .upload-item::before {
     content: '';
@@ -1873,12 +1876,40 @@ function showResult(data) {
 function renderSidebar() {
   const list = document.getElementById('uploadsList');
   list.innerHTML = uploads.map(u => `
-    <div class="upload-item ${currentFileId === u.file_id ? 'active' : ''}" onclick="selectUpload(${u.file_id}, '${u.filename}')">
-      <div class="upload-item-name">${u.filename}</div>
-      <div class="upload-item-meta"><span class="badge ${u.source_type==='whatsapp'?'badge-wa':'badge-tg'}">${u.source_type}</span><span>${u.message_count} msgs</span></div>
+    <div class="upload-item ${currentFileId === u.file_id ? 'active' : ''}">
+      <div onclick="selectUpload(${u.file_id}, '${u.filename}')" style="flex: 1; min-width: 0;">
+        <div class="upload-item-name">${u.filename}</div>
+        <div class="upload-item-meta"><span class="badge ${u.source_type==='whatsapp'?'badge-wa':'badge-tg'}">${u.source_type}</span><span>${u.message_count} msgs</span></div>
+      </div>
+      <button class="delete-chat-btn" onclick="deleteChat(${u.file_id}, event)" title="Delete Chat" style="background: none; border: none; color: var(--muted); cursor: pointer; padding: 5px; opacity: 0.7;">
+        &#128465;&#65039;
+      </button>
     </div>
   `).join('');
 }
+
+async function deleteChat(fileId, event) {
+  event.stopPropagation();
+  if (!confirm("Are you sure you want to delete this chat and all its data?")) return;
+  
+  try {
+    const res = await fetch(`${API}/upload/${fileId}`, { method: 'DELETE' });
+    if (res.ok) {
+      if (currentFileId === fileId) {
+        currentFileId = null;
+        document.getElementById('currentChatName').innerText = 'Select a chat';
+        document.getElementById('dashboardContent').innerHTML = '<div class="empty-state">Select a chat from the sidebar</div>';
+        document.getElementById('filesContent').innerHTML = '<div class="empty-state">Select a chat from the sidebar</div>';
+      }
+      loadUploads(); // refresh the list
+    } else {
+      alert("Failed to delete chat.");
+    }
+  } catch (err) {
+    alert("Error deleting chat.");
+  }
+}
+
 
 // Dashboard
 let _dashboardData = null;
