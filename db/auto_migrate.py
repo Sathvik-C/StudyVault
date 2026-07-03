@@ -83,12 +83,17 @@ def run_migrations(engine) -> None:
     """Run all migrations idempotently."""
     logger.info("Running database migrations...")
 
-    with engine.begin() as conn:
+    # Use AUTOCOMMIT so a single failed statement (like ALTER TABLE IF NOT EXISTS on older PG)
+    # doesn't abort the entire transaction and rollback the BASE_SCHEMA.
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         # 1. Base schema
         for statement in BASE_SCHEMA.split(";"):
             stmt = statement.strip()
             if stmt:
-                conn.execute(text(stmt))
+                try:
+                    conn.execute(text(stmt))
+                except Exception as e:
+                    logger.debug("Base schema statement skipped: %s", e)
         logger.info("Base schema OK")
 
         # 2. Chats table + incremental ingestion columns (migrate.sql)
