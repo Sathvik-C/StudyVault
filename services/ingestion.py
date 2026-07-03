@@ -452,229 +452,228 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
             )
             message_db_ids.append(row.scalar())
 
-    # ── Detect important messages ─────────────────────────────
-    flagged = detect_important(new_messages)
+    # ── Background Processing for Heavy AI Tasks ──────────────
+    import threading
 
-    if flagged:
-        flagged_orders = {m["order"] for m in flagged}
-        with engine.begin() as conn:
-            for i, msg in enumerate(new_messages):
-                if msg["order"] in flagged_orders:
-                    conn.execute(
-                        text("UPDATE messages SET is_important = TRUE WHERE id = :id"),
-                        {"id": message_db_ids[i]},
-                    )
-            for msg in flagged:
-                idx = next(i for i, m in enumerate(new_messages) if m["order"] == msg["order"])
-                conn.execute(
-                    text("""
-                        INSERT INTO important_messages
-                            (file_id, message_id, sender, content, trigger_word, detected_deadline)
-                        VALUES (:file_id, :message_id, :sender, :content, :trigger_word, :deadline)
-                    """),
+    def _bg_process(messages_data, db_ids, extract_path_, chat_id_, chat_storage_):
+        try:
+            logger.info("Background processing started for file_id=%d", db_file_id)
+            
+            # ── Detect important messages ─────────────────────────────
+            flagged = detect_important(messages_data)
+
+            if flagged:
+                flagged_orders = {m["order"] for m in flagged}
+                with engine.begin() as conn:
+                    for i, msg in enumerate(messages_data):
+                        if msg["order"] in flagged_orders:
+                            conn.execute(
+                                text("UPDATE messages SET is_important = TRUE WHERE id = :id"),
+                                {"id": db_ids[i]},
+                            )
+                    for msg in flagged:
+                        idx = next(i for i, m in enumerate(messages_data) if m["order"] == msg["order"])
+                        conn.execute(
+                            text("""
+                                INSERT INTO important_messages
+                                    (file_id, message_id, sender, content, trigger_word, detected_deadline)
+                                VALUES (:file_id, :message_id, :sender, :content, :trigger_word, :deadline)
+                            """),
+                            {
+                                "file_id": db_file_id,
+                                "message_id": db_ids[idx],
+                                "sender": msg["role"],
+                                "content": msg["content"],
+                                "trigger_word": msg["trigger_word"],
+                                "deadline": msg["detected_deadline"],
+                            },
+                        )
+
+            # ── Separate images from documents ────────────────────────
+            file_entries = []
+            image_entries = []
+
+            for i, msg in enumerate(messages_data):
+                source = msg.get("file")
+                if not source or not isinstance(source, Path) or not source.is_file():
+                    continue
+                ext = source.suffix.lower()
+                if ext in IMAGE_EXTENSIONS:
+                    image_entries.append({"msg_index": i, "source": source})
+                else:
+                    context = _get_context(messages_data, i)
+                    from services.classifier import _apply_filename_rules
+                    pre_cat = _apply_filename_rules(source.name, "")
+                    if pre_cat:
+                        first_page_text = ""
+                    else:
+                        first_page_text = extract_first_page_text(source)
+                        if first_page_text:
+                            logger.debug("Extracted %d chars from first page of %s",
+                                         len(first_page_text), source.name)
+                    file_entries.append({
+                        "msg_index": i,
+                        "source": source,
+                        "filename": source.name,
+                        "context": context,
+                        "first_page_text": first_page_text,
+                    })
+
+            logger.info("Found %d documents to classify, %d images to move directly",
+                        len(file_entries), len(image_entries))
+
+            # ── Batch classify documents ──────────────────────────────
+            classification_map = {}
+            if file_entries:
+                file_list = [
                     {
-                        "file_id": db_file_id,
-                        "message_id": message_db_ids[idx],
-                        "sender": msg["role"],
-                        "content": msg["content"],
-                        "trigger_word": msg["trigger_word"],
-                        "deadline": msg["detected_deadline"],
-                    },
-                )
+                        "filename": e["filename"],
+                        "context": e["context"],
+                        "first_page_text": e.get("first_page_text", ""),
+                    }
+                    for e in file_entries
+                ]
+                classification_map = batch_classify(file_list, existing_structure)
 
-    # ── Separate images from documents ────────────────────────
-    file_entries = []
-    image_entries = []
+            # ── Setup storage ─────────────────────────────────────────
+            chat_storage_.mkdir(parents=True, exist_ok=True)
 
-    for i, msg in enumerate(new_messages):
-        source = msg.get("file")
-        if not source or not isinstance(source, Path) or not source.is_file():
-            continue
-        ext = source.suffix.lower()
-        if ext in IMAGE_EXTENSIONS:
-            image_entries.append({"msg_index": i, "source": source})
-        else:
-            context = _get_context(new_messages, i)
-            # Only extract first-page text when filename rules can't already
-            # determine the category — avoids opening every PDF unnecessarily.
-            from services.classifier import _apply_filename_rules
-            pre_cat = _apply_filename_rules(source.name, "")
-            if pre_cat:  # filename rule fired → skip heavy extraction
-                first_page_text = ""
-            else:
-                first_page_text = extract_first_page_text(source)
-                if first_page_text:
-                    logger.debug("Extracted %d chars from first page of %s",
-                                 len(first_page_text), source.name)
-            file_entries.append({
-                "msg_index": i,
-                "source": source,
-                "filename": source.name,
-                "context": context,
-                "first_page_text": first_page_text,
-            })
+            moved, missing = 0, 0
+            subject_counts: dict[str, int] = {}
+            new_attachment_ids: list[int] = []
 
-    logger.info("Found %d documents to classify, %d images to move directly",
-                len(file_entries), len(image_entries))
+            # ── Move images ─────────────────────────
+            for entry in image_entries:
+                source = entry["source"]
+                if not source or not source.exists() or not source.is_file():
+                    missing += 1
+                    logger.warning("Image not found, skipping: %s", source)
+                    continue
 
-    # ── Batch classify documents ──────────────────────────────
-    classification_map = {}
-    if file_entries:
-        file_list = [
-            {
-                "filename": e["filename"],
-                "context": e["context"],
-                "first_page_text": e.get("first_page_text", ""),
-            }
-            for e in file_entries
-        ]
-        classification_map = batch_classify(file_list, existing_structure)
+                i = entry["msg_index"]
+                img_context = _get_context(messages_data, i)
+                img_subject = _guess_subject_from_context(img_context)
 
-    # ── Setup storage ─────────────────────────────────────────
-    chat_storage = STORAGE_DIR / f"chat_{chat_id}"
-    chat_storage.mkdir(parents=True, exist_ok=True)
+                img_dir = chat_storage_ / "Images" / img_subject
+                img_dir.mkdir(parents=True, exist_ok=True)
 
-    moved, missing = 0, 0
-    subject_counts: dict[str, int] = {}
-    new_attachment_ids: list[int] = []
+                dest = _unique_dest(img_dir, source.name)
+                file_hash_val = _file_sha256(source)
+                size = source.stat().st_size
+                shutil.move(str(source), str(dest))
+                moved += 1
+                storage_rel = dest.relative_to(chat_storage_)
+                with engine.begin() as conn:
+                    aid = _insert_attachment(conn, db_file_id, db_ids[i],
+                                       source.name, storage_rel,
+                                       "Images", img_subject, None, "context",
+                                       file_hash_val, size, text)
+                    if aid:
+                        new_attachment_ids.append(aid)
 
-    # ── Move images → Images/{subject} ─────────────────────────
-    for entry in image_entries:
-        source = entry["source"]
-        if not source or not source.exists() or not source.is_file():
-            missing += 1
-            logger.warning("Image not found, skipping: %s", source)
-            continue
+            # ── Move documents ──────────────────
+            for entry in file_entries:
+                source = entry["source"]
+                if not source or not source.exists() or not source.is_file():
+                    missing += 1
+                    logger.warning("File not found, skipping: %s", source)
+                    continue
 
-        # Use chat context to determine subject for images
-        i = entry["msg_index"]
-        img_context = _get_context(new_messages, i)
-        img_subject = _guess_subject_from_context(img_context)
+                classification = classification_map.get(entry["filename"], {
+                    "category": "Other", "subject": "Unknown", "subcategory": None, "method": "fallback"
+                })
 
-        img_dir = chat_storage / "Images" / img_subject
-        img_dir.mkdir(parents=True, exist_ok=True)
+                category = classification["category"]
+                subject  = classification["subject"]
+                subcat   = classification["subcategory"]
+                method   = classification["method"]
 
-        dest = _unique_dest(img_dir, source.name)
-        file_hash = _file_sha256(source)
-        size = source.stat().st_size
-        shutil.move(str(source), str(dest))
-        moved += 1
-        storage_rel = dest.relative_to(chat_storage)
-        with engine.begin() as conn:
-            aid = _insert_attachment(conn, db_file_id, message_db_ids[i],
-                               source.name, storage_rel,
-                               "Images", img_subject, None, "context",
-                               file_hash, size, text)
-            if aid:
-                new_attachment_ids.append(aid)
+                dest_dir = chat_storage_ / category / subject
+                if subcat:
+                    dest_dir = dest_dir / subcat
+                dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Move documents → classified folders ──────────────────
-    for entry in file_entries:
-        source = entry["source"]
-        if not source or not source.exists() or not source.is_file():
-            missing += 1
-            logger.warning("File not found, skipping: %s", source)
-            continue
+                dest = _unique_dest(dest_dir, source.name)
+                file_hash_val = _file_sha256(source)
+                size = source.stat().st_size
+                shutil.move(str(source), str(dest))
+                moved += 1
+                subject_counts[subject] = subject_counts.get(subject, 0) + 1
+                storage_rel = dest.relative_to(chat_storage_)
+                i = entry["msg_index"]
 
-        classification = classification_map.get(entry["filename"], {
-            "category": "Other", "subject": "Unknown", "subcategory": None, "method": "fallback"
-        })
+                with engine.begin() as conn:
+                    aid = _insert_attachment(conn, db_file_id, db_ids[i],
+                                       source.name, storage_rel,
+                                       category, subject, subcat, method,
+                                       file_hash_val, size, text)
+                    if aid:
+                        new_attachment_ids.append(aid)
 
-        category = classification["category"]
-        subject  = classification["subject"]
-        subcat   = classification["subcategory"]
-        method   = classification["method"]
+            # ── Update subjects registry ──────────────────────────────
+            with engine.begin() as conn:
+                for subject, count in subject_counts.items():
+                    conn.execute(
+                        text("""
+                            INSERT INTO subjects (file_id, name, file_count)
+                            VALUES (:file_id, :name, :count)
+                            ON CONFLICT (file_id, name)
+                            DO UPDATE SET file_count = subjects.file_count + EXCLUDED.file_count
+                        """),
+                        {"file_id": db_file_id, "name": subject, "count": count},
+                    )
 
-        dest_dir = chat_storage / category / subject
-        if subcat:
-            dest_dir = dest_dir / subcat
-        dest_dir.mkdir(parents=True, exist_ok=True)
+            # ── Update chat's last processed timestamp ────────────────
+            dates_with_values = [m["date"] for m in messages_data if m.get("date")]
+            if dates_with_values:
+                latest_date = max(dates_with_values)
+                with engine.begin() as conn:
+                    _update_chat(conn, text, chat_id_, latest_date, len(messages_data), moved)
 
-        dest = _unique_dest(dest_dir, source.name)
-        file_hash = _file_sha256(source)
-        size = source.stat().st_size
-        shutil.move(str(source), str(dest))
-        moved += 1
-        subject_counts[subject] = subject_counts.get(subject, 0) + 1
-        storage_rel = dest.relative_to(chat_storage)
-        i = entry["msg_index"]
+            # ── Write important_messages.txt ──────────────────────────
+            write_important_messages_file(flagged, chat_storage_ / "important_messages.txt")
 
-        with engine.begin() as conn:
-            logger.info("Moving file %s to %s (Cat: %s, Subj: %s, Subcat: %s)", source.name, dest, category, subject, subcat)
-            aid = _insert_attachment(conn, db_file_id, message_db_ids[i],
-                               source.name, storage_rel,
-                               category, subject, subcat, method,
-                               file_hash, size, text)
-            if aid:
-                new_attachment_ids.append(aid)
-
-    # ── Update subjects registry ──────────────────────────────
-    with engine.begin() as conn:
-        for subject, count in subject_counts.items():
-            conn.execute(
-                text("""
-                    INSERT INTO subjects (file_id, name, file_count)
-                    VALUES (:file_id, :name, :count)
-                    ON CONFLICT (file_id, name)
-                    DO UPDATE SET file_count = subjects.file_count + EXCLUDED.file_count
-                """),
-                {"file_id": db_file_id, "name": subject, "count": count},
-            )
-
-    # ── Update chat's last processed timestamp ────────────────
-    dates_with_values = [m["date"] for m in new_messages if m.get("date")]
-    if dates_with_values:
-        latest_date = max(dates_with_values)
-        with engine.begin() as conn:
-            _update_chat(conn, text, chat_id, latest_date, len(new_messages), moved)
-
-    # ── Write important_messages.txt ──────────────────────────
-    write_important_messages_file(flagged, chat_storage / "important_messages.txt")
-
-    # ── Cleanup ───────────────────────────────────────────────
-    # ── Trigger RAG Indexing for PDFs (background) ────────────
-    # Run in a daemon thread so the upload response returns immediately.
-    try:
-        from services.rag import index_attachment
-        import threading
-
-        def _rag_index_bg(engine_, chat_id_, db_file_id_):
+            # ── Cleanup ───────────────────────────────────────────────
+            shutil.rmtree(extract_path_, ignore_errors=True)
+            
+            # ── Trigger RAG Indexing for PDFs ─────────────────────────
             try:
-                with engine_.begin() as conn_:
-                    pdf_attachments = conn_.execute(
+                from services.rag import index_attachment
+                with engine.begin() as conn:
+                    pdf_attachments = conn.execute(
                         text("""
                             SELECT a.id, a.original_name, a.storage_path
                             FROM attachments a
                             WHERE a.file_id = :fid
                               AND a.original_name ILIKE '%%.pdf'
                         """),
-                        {"fid": db_file_id_},
+                        {"fid": db_file_id}
                     ).fetchall()
 
-                total_chunks = 0
-                for att in pdf_attachments:
-                    file_path = str(STORAGE_DIR / f"chat_{chat_id_}" / att.storage_path)
+                logger.info("Starting background RAG indexing for %d PDFs in file %d", len(pdf_attachments), db_file_id)
+                for pdf_row in pdf_attachments:
+                    pdf_path = str(chat_storage_ / pdf_row.storage_path)
                     try:
-                        chunks = index_attachment(
-                            engine_, att.id, db_file_id_, att.original_name, file_path
-                        )
-                        total_chunks += chunks
+                        index_attachment(engine, pdf_row.id, pdf_path)
                     except Exception as e:
-                        logger.warning("Failed to index attachment %d (%s): %s",
-                                       att.id, att.original_name, e)
-                logger.info("[BG] RAG indexing done. Total chunks: %d", total_chunks)
+                        logger.error("Failed to index PDF %s (attachment %d): %s", pdf_row.original_name, pdf_row.id, e)
+                logger.info("Background RAG indexing complete for file %d", db_file_id)
             except Exception as e:
-                logger.error("[BG] RAG indexing error: %s", e)
+                logger.error("Error setting up RAG index: %s", e)
+                
+            logger.info("Background processing complete for file_id=%d", db_file_id)
 
-        t = threading.Thread(
-            target=_rag_index_bg,
-            args=(engine, chat_id, db_file_id),
-            daemon=True,
-        )
-        t.start()
-        logger.info("RAG indexing started in background thread")
-    except Exception as e:
-        logger.error("Could not start RAG background thread: %s", e)
+        except Exception as e:
+            logger.error("Background processing failed for file_id=%d: %s", db_file_id, e)
+
+    # Start the background thread
+    chat_storage = STORAGE_DIR / f"chat_{chat_id}"
+    t = threading.Thread(
+        target=_bg_process,
+        args=(new_messages, message_db_ids, extract_path, chat_id, chat_storage)
+    )
+    t.daemon = True
+    t.start()
 
     return {
         "db_file_id": db_file_id,
@@ -682,10 +681,11 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
         "chat_name": chat_name,
         "message_count": len(new_messages),
         "skipped_count": skipped,
-        "important_count": len(flagged),
-        "attachments_moved": moved,
-        "attachments_missing": missing,
-        "subjects_detected": list(subject_counts.keys()),
-        "new_attachment_ids": new_attachment_ids,
+        "important_count": "processing",
+        "attachments_moved": "processing",
+        "attachments_missing": 0,
+        "subjects_detected": [],
+        "new_attachment_ids": [],
         "is_reupload": is_reupload,
+        "status": "Processing in background...",
     }
