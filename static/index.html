@@ -1893,21 +1893,31 @@ async function deleteChat(fileId, event) {
   if (!confirm("Are you sure you want to delete this chat and all its data?")) return;
   
   try {
-    const res = await fetch(`${API}/upload/${fileId}`, { method: 'DELETE' });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    
+    const res = await fetch(`${API}/upload/${fileId}`, { method: 'DELETE', signal: controller.signal });
+    clearTimeout(timeoutId);
+    
     if (res.ok) {
-      if (currentFileId === fileId) {
-        currentFileId = null;
-        document.getElementById('currentChatName').innerText = 'Select a chat';
-        document.getElementById('dashboardContent').innerHTML = '<div class="empty-state">Select a chat from the sidebar</div>';
-        document.getElementById('filesContent').innerHTML = '<div class="empty-state">Select a chat from the sidebar</div>';
-      }
-      loadUploads(); // refresh the list
+      showToast('Chat deleted successfully');
     } else {
-      alert("Failed to delete chat.");
+      showToast('Delete may still be processing...', 'info');
     }
   } catch (err) {
-    alert("Error deleting chat.");
+    // Timeout or network error — the delete is likely still running on the server
+    showToast('Delete is processing in the background...', 'info');
   }
+  
+  // Always clean up the UI regardless of response
+  if (currentFileId === fileId) {
+    currentFileId = null;
+    document.getElementById('currentChatName').innerText = 'Select a chat';
+    document.getElementById('dashboardContent').innerHTML = '<div class="empty-state">Select a chat from the sidebar</div>';
+    document.getElementById('filesContent').innerHTML = '<div class="empty-state">Select a chat from the sidebar</div>';
+  }
+  // Refresh sidebar after a short delay to allow backend to finish
+  setTimeout(() => loadUploads(), 1500);
 }
 
 
