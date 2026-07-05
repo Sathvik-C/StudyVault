@@ -542,6 +542,14 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
             subject_counts: dict[str, int] = {}
             new_attachment_ids: list[int] = []
 
+            # ── Setup Supabase storage ────────────────────────────
+            from services.storage import upload_file as sb_upload, is_available as sb_available
+            use_supabase = sb_available()
+            if use_supabase:
+                logger.info("Supabase storage available — files will be uploaded to cloud")
+            else:
+                logger.warning("Supabase not configured — files stored on disk only")
+
             # ── Move images ─────────────────────────
             for entry in image_entries:
                 source = entry["source"]
@@ -563,6 +571,14 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                 shutil.move(str(source), str(dest))
                 moved += 1
                 storage_rel = dest.relative_to(chat_storage_)
+
+                # Upload to Supabase
+                supabase_key = None
+                if use_supabase:
+                    sb_key = f"chat_{chat_id_}/Images/{img_subject}/{dest.name}"
+                    if sb_upload(dest, sb_key):
+                        supabase_key = sb_key
+
                 with engine.begin() as conn:
                     aid = _insert_attachment(conn, db_file_id, db_ids[i],
                                        source.name, storage_rel,
@@ -570,6 +586,11 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                                        file_hash_val, size, text)
                     if aid:
                         new_attachment_ids.append(aid)
+                        if supabase_key:
+                            conn.execute(
+                                text("UPDATE attachments SET supabase_key = :key WHERE id = :aid"),
+                                {"key": supabase_key, "aid": aid}
+                            )
 
             # ── Move documents ──────────────────
             for entry in file_entries:
@@ -602,6 +623,14 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                 storage_rel = dest.relative_to(chat_storage_)
                 i = entry["msg_index"]
 
+                # Upload to Supabase
+                supabase_key = None
+                if use_supabase:
+                    sb_path = str(storage_rel).replace("\\", "/")
+                    sb_key = f"chat_{chat_id_}/{sb_path}"
+                    if sb_upload(dest, sb_key):
+                        supabase_key = sb_key
+
                 with engine.begin() as conn:
                     aid = _insert_attachment(conn, db_file_id, db_ids[i],
                                        source.name, storage_rel,
@@ -609,6 +638,11 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                                        file_hash_val, size, text)
                     if aid:
                         new_attachment_ids.append(aid)
+                        if supabase_key:
+                            conn.execute(
+                                text("UPDATE attachments SET supabase_key = :key WHERE id = :aid"),
+                                {"key": supabase_key, "aid": aid}
+                            )
 
             # ── Update subjects registry ──────────────────────────────
             with engine.begin() as conn:

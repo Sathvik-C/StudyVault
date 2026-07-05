@@ -120,4 +120,16 @@ def run_migrations(engine) -> None:
                         logger.debug("RAG migration statement skipped (likely already applied): %s", e)
             logger.info("RAG schema OK")
 
+        # 4. Supabase storage key column (migrate_supabase.sql)
+        supabase_sql = _read_sql("migrate_supabase.sql")
+        if supabase_sql:
+            for statement in supabase_sql.split(";"):
+                stmt = statement.strip()
+                if stmt and not stmt.startswith("--"):
+                    try:
+                        conn.execute(text(stmt))
+                    except Exception as e:
+                        logger.debug("Supabase migration statement skipped (likely already applied): %s", e)
+            logger.info("Supabase storage migration OK")
+
     logger.info("All migrations complete")

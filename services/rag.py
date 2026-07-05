@@ -129,6 +129,7 @@ def index_attachment(engine, attachment_id: int, file_id: int,
                      source_name: str, file_path: str) -> int:
     """
     Full pipeline: extract PDF → chunk → embed → store.
+    If file is missing on disk but has a supabase_key, downloads it first.
     Returns number of chunks indexed.
     """
     # Check if already indexed
@@ -142,50 +143,81 @@ def index_attachment(engine, attachment_id: int, file_id: int,
                         attachment_id, existing)
             return existing
 
-    # Extract text
-    pages = extract_pdf_text(file_path)
-    if not pages:
-        logger.info("No text extracted from %s — skipping indexing", source_name)
-        return 0
+    # Resolve file path — download from Supabase if not on disk
+    resolved_path = file_path
+    tmp_path = None
 
-    # Chunk
-    chunks = chunk_pages(pages)
-    if not chunks:
-        return 0
+    if not os.path.isfile(file_path):
+        with engine.begin() as conn:
+            row = conn.execute(
+                text("SELECT supabase_key FROM attachments WHERE id = :aid"),
+                {"aid": attachment_id},
+            ).fetchone()
+        supabase_key = row.supabase_key if row else None
 
-    # Embed
-    chunk_texts = [c["content"] for c in chunks]
-    embeddings = embed_texts(chunk_texts)
-    if embeddings is None:
-        return 0
+        if supabase_key:
+            from services.storage import download_to_temp
+            suffix = os.path.splitext(file_path)[1] or ".pdf"
+            tmp_path = download_to_temp(supabase_key, suffix=suffix)
+            if tmp_path:
+                resolved_path = str(tmp_path)
+                logger.info("Downloaded %s from Supabase for indexing", source_name)
+            else:
+                logger.warning("Could not download %s from Supabase — skipping", source_name)
+                return 0
+        else:
+            logger.info("File not on disk and no supabase_key — skipping %s", source_name)
+            return 0
 
-    # Store
-    with engine.begin() as conn:
-        for chunk, emb_vec in zip(chunks, embeddings):
-            emb_list = emb_vec.tolist()
-            conn.execute(
-                text("""
-                    INSERT INTO document_chunks
-                        (attachment_id, file_id, chunk_index, content,
-                         embedding, page_number, source_name)
-                    VALUES
-                        (:aid, :fid, :cidx, :content,
-                         :embedding, :page, :sname)
-                """),
-                {
-                    "aid": attachment_id,
-                    "fid": file_id,
-                    "cidx": chunk["chunk_index"],
-                    "content": chunk["content"],
-                    "embedding": emb_list,
-                    "page": chunk["page_number"],
-                    "sname": source_name,
-                },
-            )
+    try:
+        # Extract text
+        pages = extract_pdf_text(resolved_path)
+        if not pages:
+            logger.info("No text extracted from %s — skipping indexing", source_name)
+            return 0
 
-    logger.info("Indexed %d chunks for attachment %d (%s)",
-                len(chunks), attachment_id, source_name)
-    return len(chunks)
+        # Chunk
+        chunks = chunk_pages(pages)
+        if not chunks:
+            return 0
+
+        # Embed
+        chunk_texts = [c["content"] for c in chunks]
+        embeddings = embed_texts(chunk_texts)
+        if embeddings is None:
+            return 0
+
+        # Store
+        with engine.begin() as conn:
+            for chunk, emb_vec in zip(chunks, embeddings):
+                emb_list = emb_vec.tolist()
+                conn.execute(
+                    text("""
+                        INSERT INTO document_chunks
+                            (attachment_id, file_id, chunk_index, content,
+                             embedding, page_number, source_name)
+                        VALUES
+                            (:aid, :fid, :cidx, :content,
+                             :embedding, :page, :sname)
+                    """),
+                    {
+                        "aid": attachment_id,
+                        "fid": file_id,
+                        "cidx": chunk["chunk_index"],
+                        "content": chunk["content"],
+                        "embedding": emb_list,
+                        "page": chunk["page_number"],
+                        "sname": source_name,
+                    },
+                )
+
+        logger.info("Indexed %d chunks for attachment %d (%s)",
+                    len(chunks), attachment_id, source_name)
+        return len(chunks)
+    finally:
+        # Clean up temp file if we downloaded one
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 def get_index_status(engine, file_id: int) -> dict:

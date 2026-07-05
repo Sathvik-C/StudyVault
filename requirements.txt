@@ -16,3 +16,4 @@ pdfplumber
 python-docx
 python-pptx
 requests
+supabase

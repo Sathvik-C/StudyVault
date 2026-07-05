@@ -69,6 +69,7 @@ def rag_index(file_id: int):
     for att in attachments:
         chat_id = att.chat_id
         file_path = str(STORAGE_DIR / f"chat_{chat_id}" / att.storage_path)
+        # index_attachment handles Supabase fallback if file not on disk
         try:
             chunks = index_attachment(
                 engine, att.id, file_id, att.original_name, file_path

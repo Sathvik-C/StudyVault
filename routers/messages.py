@@ -589,20 +589,33 @@ def download_attachment(file_id: int, attachment_id: int):
     with engine.begin() as conn:
         row = conn.execute(
             text("""
-                SELECT a.storage_path, a.original_name, f.chat_id
+                SELECT a.storage_path, a.original_name, f.chat_id, a.supabase_key
                 FROM attachments a
                 JOIN files f ON a.file_id = f.id
                 WHERE a.id = :aid
             """),
             {"aid": attachment_id},
         ).fetchone()
-    if not row: raise HTTPException(status_code=404, detail="Attachment not found")
+    if not row:
+        raise HTTPException(status_code=404, detail="Attachment not found")
     res = row._mapping
+
+    # ── Try Supabase first ────────────────────────────────────
+    if res.get("supabase_key"):
+        from services.storage import get_signed_url
+        signed_url = get_signed_url(res["supabase_key"], expires_in=3600)
+        if signed_url:
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=signed_url)
+
+    # ── Fall back to local disk ───────────────────────────────
     file_path = STORAGE_DIR / f"chat_{res['chat_id']}" / res['storage_path']
-    if not file_path.is_file(): raise HTTPException(status_code=404, detail="File missing on disk")
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File missing on disk")
     import mimetypes
     mime, _ = mimetypes.guess_type(str(file_path))
-    if mime is None: mime = "application/octet-stream"
+    if mime is None:
+        mime = "application/octet-stream"
     headers = {"Content-Disposition": f"inline; filename=\"{res.get('original_name')}\""}
     return FileResponse(file_path, media_type=mime, headers=headers)
 
