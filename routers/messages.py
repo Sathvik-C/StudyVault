@@ -587,15 +587,28 @@ def delete_folder(file_id: int, category: str = Query(...), subject: str = Query
 @router.get("/{file_id}/attachments/{attachment_id}")
 def download_attachment(file_id: int, attachment_id: int):
     with engine.begin() as conn:
-        row = conn.execute(
-            text("""
-                SELECT a.storage_path, a.original_name, f.chat_id, a.supabase_key
-                FROM attachments a
-                JOIN files f ON a.file_id = f.id
-                WHERE a.id = :aid
-            """),
-            {"aid": attachment_id},
-        ).fetchone()
+        # Try with supabase_key first, fall back if column doesn't exist yet
+        try:
+            row = conn.execute(
+                text("""
+                    SELECT a.storage_path, a.original_name, f.chat_id, a.supabase_key
+                    FROM attachments a
+                    JOIN files f ON a.file_id = f.id
+                    WHERE a.id = :aid
+                """),
+                {"aid": attachment_id},
+            ).fetchone()
+        except Exception:
+            row = conn.execute(
+                text("""
+                    SELECT a.storage_path, a.original_name, f.chat_id, NULL as supabase_key
+                    FROM attachments a
+                    JOIN files f ON a.file_id = f.id
+                    WHERE a.id = :aid
+                """),
+                {"aid": attachment_id},
+            ).fetchone()
+
     if not row:
         raise HTTPException(status_code=404, detail="Attachment not found")
     res = row._mapping
