@@ -25,15 +25,26 @@ BUCKET = "studyvault-files"
 _client = None
 
 
+def _get_supabase_url():
+    return os.getenv("SUPABASE_URL", "")
+
+def _get_supabase_key():
+    return os.getenv("SUPABASE_KEY", "")
+
+
 def _get_client():
     global _client
     if _client is not None:
         return _client
-    if not SUPABASE_URL or not SUPABASE_KEY:
+    url = _get_supabase_url()
+    key = _get_supabase_key()
+    if not url or not key:
+        logger.error("Supabase not configured — SUPABASE_URL=%r, SUPABASE_KEY set=%s", url, bool(key))
         return None
     try:
         from supabase import create_client
-        _client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        _client = create_client(url, key)
+        logger.info("Supabase client initialised for %s", url)
         return _client
     except Exception as e:
         logger.error("Failed to init Supabase client: %s", e)
@@ -42,7 +53,7 @@ def _get_client():
 
 def is_available() -> bool:
     """Returns True if Supabase storage is configured."""
-    return bool(SUPABASE_URL and SUPABASE_KEY)
+    return bool(_get_supabase_url() and _get_supabase_key())
 
 
 def upload_file(local_path: Path, storage_key: str) -> bool:

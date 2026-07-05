@@ -56,6 +56,31 @@ def health_check():
     return {"status": "healthy", "service": "StudyVault"}
 
 
+@app.get("/debug/storage")
+def debug_storage():
+    """Check Supabase storage configuration status."""
+    from services.storage import is_available, _get_client, _get_supabase_url
+    url = _get_supabase_url()
+    available = is_available()
+    client_ok = False
+    error = None
+    if available:
+        try:
+            client = _get_client()
+            if client:
+                buckets = client.storage.list_buckets()
+                client_ok = True
+        except Exception as e:
+            error = str(e)
+    return {
+        "supabase_url_set": bool(url),
+        "supabase_url_preview": url[:30] + "..." if url else None,
+        "supabase_key_set": bool(os.getenv("SUPABASE_KEY")),
+        "client_ok": client_ok,
+        "error": error,
+    }
+
+
 @app.get("/")
 def root():
     return FileResponse(static_dir / "landing.html")
