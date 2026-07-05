@@ -3134,7 +3134,15 @@ function renderTagsDOM(aid, tags) {
   ).join('') + input + saved;
 }
 
-function openAttachment(fid, aid) { window.open(`${API}/messages/${fid}/attachments/${aid}`); }
+function openAttachment(fid, aid) {
+  if (!aid || aid === 'null' || aid === 'undefined') { showToast('No file link available', 'info'); return; }
+  const url = `${API}/messages/${fid}/attachments/${aid}`;
+  const win = window.open(url, '_blank');
+  if (!win || win.closed || typeof win.closed === 'undefined') {
+    // popup blocked — navigate in same tab
+    window.location.href = url;
+  }
+}
 
 function showToast(m, t='success') {
   const icons = { success: '✓', error: '✕', info: 'ℹ' };
@@ -3231,20 +3239,24 @@ function appendRagMessage(text, role, sources = []) {
     msgDiv.style.alignSelf = 'flex-start';
     msgDiv.style.color = 'var(--text)';
     
-    // Bold text rendering (simple markdown)
-    let formattedText = escapeHtml(text).replace(/\\n/g, '<br>');
-    formattedText = formattedText.replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>');
-    
-    let html = formattedText;
+    // Render markdown: newlines, bold, numbered lists, bullet lists
+    let formattedText = escapeHtml(text)
+      .replace(/\n/g, '<br>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    let html = `<div style="line-height:1.7">${formattedText}</div>`;
+
     if (sources && sources.length > 0) {
-      html += `<div style="margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:8px;">`;
-      html += `<span style="font-size:12px; color:var(--text); opacity:0.8;"><i class="fa-solid fa-paperclip"></i> Click to open files:</span>`;
-      html += `<div style="display:flex; flex-wrap:wrap; gap:8px;">`;
+      html += `<div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border);">`;
+      html += `<div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:600;">📎 Sources</div>`;
+      html += `<div style="display:flex; flex-wrap:wrap; gap:6px;">`;
       sources.forEach(s => {
-        let pageStr = s.page !== 'N/A' ? ` (Pg ${s.page})` : '';
-        html += `<button onclick="openAttachment(${currentFileId}, ${s.attachment_id})" title="${escapeHtml(s.snippet)}" style="display:flex; align-items:center; gap:6px; background:var(--primary); color:white; border:none; padding:8px 12px; border-radius:8px; font-size:12px; cursor:pointer; font-weight:600; box-shadow:0 2px 4px rgba(0,0,0,0.2); transition:transform 0.1s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-                   <i class="fa-solid fa-file-pdf"></i> ${escapeHtml(s.filename)}${pageStr}
-                 </button>`;
+        let pageStr = s.page && s.page !== 'N/A' ? ` · pg ${s.page}` : '';
+        const ext = (s.filename || '').split('.').pop().toLowerCase();
+        const icon = ext === 'pdf' ? '📄' : ext === 'pptx' || ext === 'ppt' ? '📊' : ext === 'docx' || ext === 'doc' ? '📝' : '📎';
+        html += `<button onclick="openAttachment(${currentFileId}, ${s.attachment_id})" title="${escapeHtml(s.snippet || '')}" style="display:inline-flex; align-items:center; gap:5px; background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:5px 10px; border-radius:8px; font-size:11px; cursor:pointer; font-weight:500; transition:all 0.2s; white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
+          ${icon} ${escapeHtml(s.filename)}${pageStr}
+        </button>`;
       });
       html += `</div></div>`;
     }
