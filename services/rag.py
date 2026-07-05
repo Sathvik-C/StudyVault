@@ -459,6 +459,7 @@ def ask(engine, question: str, file_id: int,
 
     # Replace the tool-calling instructions with manual JSON action format
     action_instructions = """
+/nothink
 
 IMPORTANT — HOW TO USE TOOLS:
 When you need to use a tool, output ONLY a JSON block like this (no other text):
@@ -496,13 +497,16 @@ RULES:
     try:
         for iteration in range(4):
             response = client.chat.completions.create(
-                model="openai/gpt-oss-120b",
+                model="qwen/qwen3-32b",
                 messages=messages,
                 temperature=0.2,
                 max_tokens=1500
             )
 
             reply = response.choices[0].message.content or ""
+            # Strip Qwen3 chain-of-thought think blocks if present
+            import re as _re
+            reply = _re.sub(r'<think>.*?</think>', '', reply, flags=_re.DOTALL).strip()
             messages.append({"role": "assistant", "content": reply})
 
             # Try to parse a tool action from the reply
