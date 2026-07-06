@@ -586,12 +586,6 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                 moved += 1
                 storage_rel = dest.relative_to(chat_storage_)
 
-                # Upload to Supabase
-                supabase_key = None
-                if use_supabase:
-                    sb_key = f"chat_{chat_id_}/Images/{img_subject}/{dest.name}"
-                    supabase_key = _upload_to_supabase(dest, sb_key)
-
                 with engine.begin() as conn:
                     aid = _insert_attachment(conn, db_file_id, db_ids[i],
                                        source.name, storage_rel,
@@ -599,11 +593,6 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                                        file_hash_val, size, text)
                     if aid:
                         new_attachment_ids.append(aid)
-                        if supabase_key:
-                            conn.execute(
-                                text("UPDATE attachments SET supabase_key = :key WHERE id = :aid"),
-                                {"key": supabase_key, "aid": aid}
-                            )
 
             # ── Move documents ──────────────────
             for entry in file_entries:
@@ -636,13 +625,6 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                 storage_rel = dest.relative_to(chat_storage_)
                 i = entry["msg_index"]
 
-                # Upload to Supabase
-                supabase_key = None
-                if use_supabase:
-                    sb_path = str(storage_rel).replace("\\", "/")
-                    sb_key = f"chat_{chat_id_}/{sb_path}"
-                    supabase_key = _upload_to_supabase(dest, sb_key)
-
                 with engine.begin() as conn:
                     aid = _insert_attachment(conn, db_file_id, db_ids[i],
                                        source.name, storage_rel,
@@ -650,11 +632,6 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                                        file_hash_val, size, text)
                     if aid:
                         new_attachment_ids.append(aid)
-                        if supabase_key:
-                            conn.execute(
-                                text("UPDATE attachments SET supabase_key = :key WHERE id = :aid"),
-                                {"key": supabase_key, "aid": aid}
-                            )
 
             # ── Update subjects registry ──────────────────────────────
             with engine.begin() as conn:
@@ -681,7 +658,54 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
 
             # ── Cleanup ───────────────────────────────────────────────
             shutil.rmtree(extract_path_, ignore_errors=True)
-            
+
+            # ── Upload to Supabase in background (batched) ────────────
+            if use_supabase:
+                def _supabase_upload_all():
+                    import time
+                    from services.storage import upload_file as _sb_up
+                    try:
+                        with engine.begin() as conn:
+                            rows = conn.execute(
+                                text("""
+                                    SELECT a.id, a.storage_path, f.chat_id
+                                    FROM attachments a
+                                    JOIN files f ON a.file_id = f.id
+                                    WHERE a.file_id = :fid
+                                      AND a.supabase_key IS NULL
+                                """),
+                                {"fid": db_file_id}
+                            ).fetchall()
+
+                        logger.info("Supabase backfill: uploading %d files", len(rows))
+                        batch_size = 20
+                        for i, row in enumerate(rows):
+                            fp = chat_storage_ / row.storage_path
+                            if not fp.is_file():
+                                continue
+                            sb_key = f"chat_{row.chat_id}/{str(row.storage_path).replace(chr(92), '/')}"
+                            try:
+                                ok = _sb_up(fp, sb_key)
+                                if ok:
+                                    with engine.begin() as conn:
+                                        conn.execute(
+                                            text("UPDATE attachments SET supabase_key = :k WHERE id = :aid"),
+                                            {"k": sb_key, "aid": row.id}
+                                        )
+                            except Exception as e:
+                                logger.warning("Supabase upload failed %s: %s", sb_key, e)
+                            # Small sleep every batch to avoid overwhelming the connection
+                            if (i + 1) % batch_size == 0:
+                                time.sleep(0.5)
+
+                        logger.info("Supabase backfill complete for file_id=%d", db_file_id)
+                    except Exception as e:
+                        logger.error("Supabase backfill thread failed: %s", e)
+
+                sb_thread = threading.Thread(target=_supabase_upload_all)
+                sb_thread.daemon = True
+                sb_thread.start()
+
             # ── Trigger RAG Indexing for PDFs ─────────────────────────
             try:
                 from services.rag import index_attachment
