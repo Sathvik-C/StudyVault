@@ -86,3 +86,63 @@ def rag_index(file_id: int):
         "indexed": indexed_count,
         "total_chunks": total_chunks,
     }
+
+
+@router.post("/{file_id}/backfill-storage")
+def backfill_storage(file_id: int):
+    """
+    Upload any existing attachments (missing supabase_key) to Supabase Storage.
+    Run this once after enabling Supabase to backfill existing files.
+    """
+    from services.storage import is_available, upload_file as sb_upload
+    from models.config import STORAGE_DIR
+
+    if not is_available():
+        raise HTTPException(status_code=400, detail="Supabase not configured")
+
+    with engine.begin() as conn:
+        attachments = conn.execute(
+            text("""
+                SELECT a.id, a.original_name, a.storage_path, f.chat_id
+                FROM attachments a
+                JOIN files f ON a.file_id = f.id
+                WHERE a.file_id = :fid
+                  AND a.supabase_key IS NULL
+            """),
+            {"fid": file_id},
+        ).fetchall()
+
+    if not attachments:
+        return {"message": "All files already in Supabase", "uploaded": 0}
+
+    uploaded = 0
+    failed = 0
+
+    for att in attachments:
+        file_path = STORAGE_DIR / f"chat_{att.chat_id}" / att.storage_path
+        if not file_path.is_file():
+            failed += 1
+            continue
+
+        sb_key = f"chat_{att.chat_id}/{att.storage_path}".replace("\\", "/")
+        try:
+            ok = sb_upload(file_path, sb_key)
+            if ok:
+                with engine.begin() as conn:
+                    conn.execute(
+                        text("UPDATE attachments SET supabase_key = :key WHERE id = :aid"),
+                        {"key": sb_key, "aid": att.id}
+                    )
+                uploaded += 1
+            else:
+                failed += 1
+        except Exception as e:
+            logger.warning("Backfill failed for %s: %s", att.original_name, e)
+            failed += 1
+
+    return {
+        "message": f"Backfill complete: {uploaded} uploaded, {failed} failed/missing",
+        "uploaded": uploaded,
+        "failed": failed,
+        "remaining": failed,
+    }

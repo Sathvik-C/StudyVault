@@ -550,6 +550,20 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
             else:
                 logger.warning("Supabase not configured — files stored on disk only")
 
+            def _upload_to_supabase(dest: Path, sb_key: str) -> str | None:
+                """Upload a single file to Supabase with one retry."""
+                try:
+                    if sb_upload(dest, sb_key):
+                        return sb_key
+                except Exception as e:
+                    logger.warning("Supabase upload failed for %s, retrying: %s", sb_key, e)
+                    try:
+                        if sb_upload(dest, sb_key):
+                            return sb_key
+                    except Exception as e2:
+                        logger.error("Supabase upload retry failed for %s: %s", sb_key, e2)
+                return None
+
             # ── Move images ─────────────────────────
             for entry in image_entries:
                 source = entry["source"]
@@ -576,8 +590,7 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                 supabase_key = None
                 if use_supabase:
                     sb_key = f"chat_{chat_id_}/Images/{img_subject}/{dest.name}"
-                    if sb_upload(dest, sb_key):
-                        supabase_key = sb_key
+                    supabase_key = _upload_to_supabase(dest, sb_key)
 
                 with engine.begin() as conn:
                     aid = _insert_attachment(conn, db_file_id, db_ids[i],
@@ -628,8 +641,7 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
                 if use_supabase:
                     sb_path = str(storage_rel).replace("\\", "/")
                     sb_key = f"chat_{chat_id_}/{sb_path}"
-                    if sb_upload(dest, sb_key):
-                        supabase_key = sb_key
+                    supabase_key = _upload_to_supabase(dest, sb_key)
 
                 with engine.begin() as conn:
                     aid = _insert_attachment(conn, db_file_id, db_ids[i],
