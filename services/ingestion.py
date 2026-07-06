@@ -659,52 +659,49 @@ def ingest_zip(zip_path: Path, zip_uuid: str, filename: str,
             # ── Cleanup ───────────────────────────────────────────────
             shutil.rmtree(extract_path_, ignore_errors=True)
 
-            # ── Upload to Supabase in background (batched) ────────────
+            # ── Upload all files to Supabase (concurrent, before cleanup) ──
             if use_supabase:
-                def _supabase_upload_all():
-                    import time
-                    from services.storage import upload_file as _sb_up
+                import concurrent.futures
+                from services.storage import upload_file as _sb_up
+
+                with engine.begin() as conn:
+                    pending = conn.execute(
+                        text("""
+                            SELECT a.id, a.storage_path, f.chat_id
+                            FROM attachments a
+                            JOIN files f ON a.file_id = f.id
+                            WHERE a.file_id = :fid AND a.supabase_key IS NULL
+                        """),
+                        {"fid": db_file_id}
+                    ).fetchall()
+
+                logger.info("Uploading %d files to Supabase concurrently", len(pending))
+
+                def _upload_one(row):
+                    fp = chat_storage_ / row.storage_path
+                    if not fp.is_file():
+                        return None, None
+                    sb_key = f"chat_{row.chat_id}/{str(row.storage_path).replace(chr(92), '/')}"
                     try:
-                        with engine.begin() as conn:
-                            rows = conn.execute(
-                                text("""
-                                    SELECT a.id, a.storage_path, f.chat_id
-                                    FROM attachments a
-                                    JOIN files f ON a.file_id = f.id
-                                    WHERE a.file_id = :fid
-                                      AND a.supabase_key IS NULL
-                                """),
-                                {"fid": db_file_id}
-                            ).fetchall()
-
-                        logger.info("Supabase backfill: uploading %d files", len(rows))
-                        batch_size = 20
-                        for i, row in enumerate(rows):
-                            fp = chat_storage_ / row.storage_path
-                            if not fp.is_file():
-                                continue
-                            sb_key = f"chat_{row.chat_id}/{str(row.storage_path).replace(chr(92), '/')}"
-                            try:
-                                ok = _sb_up(fp, sb_key)
-                                if ok:
-                                    with engine.begin() as conn:
-                                        conn.execute(
-                                            text("UPDATE attachments SET supabase_key = :k WHERE id = :aid"),
-                                            {"k": sb_key, "aid": row.id}
-                                        )
-                            except Exception as e:
-                                logger.warning("Supabase upload failed %s: %s", sb_key, e)
-                            # Small sleep every batch to avoid overwhelming the connection
-                            if (i + 1) % batch_size == 0:
-                                time.sleep(0.5)
-
-                        logger.info("Supabase backfill complete for file_id=%d", db_file_id)
+                        ok = _sb_up(fp, sb_key)
+                        return (row.id, sb_key) if ok else (None, None)
                     except Exception as e:
-                        logger.error("Supabase backfill thread failed: %s", e)
+                        logger.warning("Supabase upload failed %s: %s", sb_key, e)
+                        return None, None
 
-                sb_thread = threading.Thread(target=_supabase_upload_all)
-                sb_thread.daemon = True
-                sb_thread.start()
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    results = list(executor.map(_upload_one, pending))
+
+                # Batch update supabase_key in DB
+                updates = [(aid, key) for aid, key in results if aid]
+                if updates:
+                    with engine.begin() as conn:
+                        for aid, key in updates:
+                            conn.execute(
+                                text("UPDATE attachments SET supabase_key = :k WHERE id = :aid"),
+                                {"k": key, "aid": aid}
+                            )
+                logger.info("Supabase upload complete: %d/%d files uploaded", len(updates), len(pending))
 
             # ── Trigger RAG Indexing for PDFs ─────────────────────────
             try:

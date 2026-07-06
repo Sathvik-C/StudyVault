@@ -47,7 +47,6 @@ def on_startup():
         logger.info("Database migrations completed successfully")
     except Exception as e:
         logger.error("Migration failed: %s", e)
-        # Don't crash the app — it might still work if tables already exist
 
 
 @app.get("/health")
