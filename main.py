@@ -71,11 +71,33 @@ def debug_storage():
                 client_ok = True
         except Exception as e:
             error = str(e)
+
+    # Check if supabase_key column exists in DB
+    sb_col_exists = False
+    try:
+        from db.connection import get_engine
+        from sqlalchemy import text
+        eng = get_engine()
+        with eng.begin() as conn:
+            result = conn.execute(text("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name='attachments' AND column_name='supabase_key'
+            """)).fetchone()
+            sb_col_exists = result is not None
+            if not sb_col_exists:
+                # Force add it now
+                conn.execute(text("ALTER TABLE attachments ADD COLUMN IF NOT EXISTS supabase_key TEXT"))
+                sb_col_exists = True
+                error = (error or "") + " | supabase_key column was missing — added now"
+    except Exception as e:
+        error = (error or "") + f" | DB check failed: {e}"
+
     return {
         "supabase_url_set": bool(url),
         "supabase_url_preview": url[:30] + "..." if url else None,
         "supabase_key_set": bool(os.getenv("SUPABASE_KEY")),
         "client_ok": client_ok,
+        "supabase_key_column_exists": sb_col_exists,
         "error": error,
     }
 
