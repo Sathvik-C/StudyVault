@@ -586,51 +586,64 @@ def delete_folder(file_id: int, category: str = Query(...), subject: str = Query
 
 @router.get("/{file_id}/attachments/{attachment_id}")
 def download_attachment(file_id: int, attachment_id: int):
-    with engine.begin() as conn:
-        # Try with supabase_key first, fall back if column doesn't exist yet
+    try:
+        # Try with supabase_key column
         try:
-            row = conn.execute(
-                text("""
-                    SELECT a.storage_path, a.original_name, f.chat_id, a.supabase_key
-                    FROM attachments a
-                    JOIN files f ON a.file_id = f.id
-                    WHERE a.id = :aid
-                """),
-                {"aid": attachment_id},
-            ).fetchone()
+            with engine.begin() as conn:
+                row = conn.execute(
+                    text("""
+                        SELECT a.storage_path, a.original_name, f.chat_id, a.supabase_key
+                        FROM attachments a
+                        JOIN files f ON a.file_id = f.id
+                        WHERE a.id = :aid
+                    """),
+                    {"aid": attachment_id},
+                ).fetchone()
         except Exception:
-            row = conn.execute(
-                text("""
-                    SELECT a.storage_path, a.original_name, f.chat_id, NULL as supabase_key
-                    FROM attachments a
-                    JOIN files f ON a.file_id = f.id
-                    WHERE a.id = :aid
-                """),
-                {"aid": attachment_id},
-            ).fetchone()
+            # supabase_key column may not exist yet — fall back without it
+            with engine.connect() as conn:
+                row = conn.execute(
+                    text("""
+                        SELECT a.storage_path, a.original_name, f.chat_id
+                        FROM attachments a
+                        JOIN files f ON a.file_id = f.id
+                        WHERE a.id = :aid
+                    """),
+                    {"aid": attachment_id},
+                ).fetchone()
 
-    if not row:
-        raise HTTPException(status_code=404, detail="Attachment not found")
-    res = row._mapping
+        if not row:
+            raise HTTPException(status_code=404, detail="Attachment not found")
 
-    # ── Try Supabase first ────────────────────────────────────
-    if res.get("supabase_key"):
-        from services.storage import get_signed_url
-        signed_url = get_signed_url(res["supabase_key"], expires_in=3600)
-        if signed_url:
+        storage_path = row[0]
+        original_name = row[1]
+        chat_id = row[2]
+        supabase_key = row[3] if len(row) > 3 else None
+
+        # ── Try Supabase first ────────────────────────────────
+        if supabase_key:
+            from services.storage import get_signed_url
             from fastapi.responses import RedirectResponse
-            return RedirectResponse(url=signed_url)
+            signed_url = get_signed_url(supabase_key, expires_in=3600)
+            if signed_url:
+                return RedirectResponse(url=signed_url)
 
-    # ── Fall back to local disk ───────────────────────────────
-    file_path = STORAGE_DIR / f"chat_{res['chat_id']}" / res['storage_path']
-    if not file_path.is_file():
-        raise HTTPException(status_code=404, detail="File missing on disk")
-    import mimetypes
-    mime, _ = mimetypes.guess_type(str(file_path))
-    if mime is None:
-        mime = "application/octet-stream"
-    headers = {"Content-Disposition": f"inline; filename=\"{res.get('original_name')}\""}
-    return FileResponse(file_path, media_type=mime, headers=headers)
+        # ── Fall back to local disk ───────────────────────────
+        file_path = STORAGE_DIR / f"chat_{chat_id}" / storage_path
+        if not file_path.is_file():
+            raise HTTPException(status_code=404, detail="File missing on disk — please re-upload the chat export")
+        import mimetypes
+        mime, _ = mimetypes.guess_type(str(file_path))
+        if mime is None:
+            mime = "application/octet-stream"
+        headers = {"Content-Disposition": f"inline; filename=\"{original_name}\""}
+        return FileResponse(file_path, media_type=mime, headers=headers)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("download_attachment failed aid=%d: %s", attachment_id, e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 
 @router.post("/{file_id}/custom-upload")
