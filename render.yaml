@@ -17,3 +17,7 @@ services:
         value: "52428800"
       - key: MAX_EXTRACTED_BYTES
         value: "1073741824"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false

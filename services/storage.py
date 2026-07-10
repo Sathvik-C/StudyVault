@@ -103,7 +103,32 @@ def get_signed_url(storage_key: str, expires_in: int = 3600) -> Optional[str]:
             path=storage_key,
             expires_in=expires_in,
         )
-        return res.get("signedURL") or res.get("signed_url")
+        logger.debug("create_signed_url raw response type=%s: %s", type(res).__name__, res)
+
+        # supabase-py response format varies by version:
+        # - dict with "signedURL" or "signedUrl" or "signed_url"
+        # - object with .data dict/str, or .signed_url attribute
+        url = None
+
+        if isinstance(res, dict):
+            url = res.get("signedURL") or res.get("signedUrl") or res.get("signed_url")
+        elif isinstance(res, str):
+            url = res
+        else:
+            # Object-style response (newer supabase-py)
+            # Try .signed_url attribute first
+            url = getattr(res, "signed_url", None) or getattr(res, "signedURL", None)
+            if not url:
+                # Try .data which may be a dict or string
+                data = getattr(res, "data", None)
+                if isinstance(data, dict):
+                    url = data.get("signedURL") or data.get("signedUrl") or data.get("signed_url")
+                elif isinstance(data, str) and data.startswith("http"):
+                    url = data
+
+        if not url:
+            logger.error("Could not extract signed URL from response for %s: %r", storage_key, res)
+        return url
     except Exception as e:
         logger.error("Failed to create signed URL for %s: %s", storage_key, e)
         return None

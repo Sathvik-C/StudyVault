@@ -585,7 +585,9 @@ def delete_folder(file_id: int, category: str = Query(...), subject: str = Query
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{file_id}/attachments/{attachment_id}")
-def download_attachment(file_id: int, attachment_id: int):
+def download_attachment(file_id: int, attachment_id: int, redirect: bool = True):
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         # Try with supabase_key column
         try:
@@ -623,15 +625,24 @@ def download_attachment(file_id: int, attachment_id: int):
         # ── Try Supabase first ────────────────────────────────
         if supabase_key:
             from services.storage import get_signed_url
-            from fastapi.responses import RedirectResponse
             signed_url = get_signed_url(supabase_key, expires_in=3600)
             if signed_url:
+                if not redirect:
+                    # Frontend fetch mode — return URL as JSON so the frontend
+                    # can window.open() it without popup-blocker issues
+                    return {"url": signed_url, "filename": original_name}
+                from fastapi.responses import RedirectResponse
                 return RedirectResponse(url=signed_url)
+            else:
+                logger.warning("Signed URL generation failed for supabase_key=%s, falling back to disk", supabase_key)
 
         # ── Fall back to local disk ───────────────────────────
         file_path = STORAGE_DIR / f"chat_{chat_id}" / storage_path
         if not file_path.is_file():
-            raise HTTPException(status_code=404, detail="File missing on disk — please re-upload the chat export")
+            raise HTTPException(
+                status_code=404,
+                detail="File not found — it may not have been uploaded to cloud storage yet. Please re-upload the chat export.",
+            )
         import mimetypes
         mime, _ = mimetypes.guess_type(str(file_path))
         if mime is None:

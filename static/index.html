@@ -3134,13 +3134,28 @@ function renderTagsDOM(aid, tags) {
   ).join('') + input + saved;
 }
 
-function openAttachment(fid, aid) {
+async function openAttachment(fid, aid) {
   if (!aid || aid === 'null' || aid === 'undefined') { showToast('No file link available', 'info'); return; }
-  const url = `${API}/messages/${fid}/attachments/${aid}`;
-  const win = window.open(url, '_blank');
-  if (!win || win.closed || typeof win.closed === 'undefined') {
-    // popup blocked — navigate in same tab
-    window.location.href = url;
+  const apiUrl = `${API}/messages/${fid}/attachments/${aid}`;
+  try {
+    // First try to get the signed URL as JSON (Supabase path)
+    const res = await fetch(`${apiUrl}?redirect=false`);
+    if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.url) {
+          window.open(data.url, '_blank');
+          return;
+        }
+      }
+    }
+    // Fallback: open the API URL directly (local disk path serves the file)
+    window.open(apiUrl, '_blank');
+  } catch (err) {
+    console.error('openAttachment error:', err);
+    // Final fallback: just try opening the URL directly
+    window.open(apiUrl, '_blank');
   }
 }
 
