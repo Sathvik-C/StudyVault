@@ -3269,7 +3269,12 @@ function appendRagMessage(text, role, sources = []) {
         let pageStr = s.page && s.page !== 'N/A' ? ` · pg ${s.page}` : '';
         const ext = (s.filename || '').split('.').pop().toLowerCase();
         const icon = ext === 'pdf' ? '📄' : ext === 'pptx' || ext === 'ppt' ? '📊' : ext === 'docx' || ext === 'doc' ? '📝' : '📎';
-        html += `<button onclick="openAttachment(${currentFileId}, ${s.attachment_id})" title="${escapeHtml(s.snippet || '')}" style="display:inline-flex; align-items:center; gap:5px; background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:5px 10px; border-radius:8px; font-size:11px; cursor:pointer; font-weight:500; transition:all 0.2s; white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
+        const isPdf = ext === 'pdf';
+        const bgStyle = isPdf ? 'background: rgba(232, 196, 61, 0.12);' : 'background: var(--surface2);';
+        const borderStyle = isPdf ? 'border: 1px solid rgba(232, 196, 61, 0.35);' : 'border: 1px solid var(--border);';
+        const textStyle = isPdf ? 'color: rgba(255, 230, 150, 0.95);' : 'color: var(--text);';
+        
+        html += `<button onclick="openAttachment(${currentFileId}, ${s.attachment_id})" title="${escapeHtml(s.snippet || '')}" style="display:inline-flex; align-items:center; gap:5px; ${bgStyle} ${textStyle} ${borderStyle} padding:5px 10px; border-radius:8px; font-size:11px; cursor:pointer; font-weight:500; transition:all 0.2s; white-space:nowrap;" onmouseover="this.style.borderColor='rgba(232, 196, 61, 0.8)';this.style.color='#f3d052'" onmouseout="this.style.borderColor='${isPdf ? 'rgba(232,196,61,0.35)' : 'var(--border)'}';this.style.color='${isPdf ? 'rgba(255, 230, 150, 0.95)' : 'var(--text)'}'">
           ${icon} ${escapeHtml(s.filename)}${pageStr}
         </button>`;
       });
