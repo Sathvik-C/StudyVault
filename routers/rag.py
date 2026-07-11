@@ -42,18 +42,36 @@ def rag_status(file_id: int):
 
 @router.post("/{file_id}/index")
 def rag_index(file_id: int):
-    """Manually trigger indexing for all PDF attachments in this upload."""
+    """Manually trigger indexing for all PDF attachments in this chat."""
     with engine.begin() as conn:
-        attachments = conn.execute(
-            text("""
-                SELECT a.id, a.original_name, a.storage_path, f.chat_id
-                FROM attachments a
-                JOIN files f ON a.file_id = f.id
-                WHERE a.file_id = :fid
-                  AND a.original_name ILIKE '%%.pdf'
-            """),
+        # Resolve chat_id to find all PDFs across all uploads in this chat
+        chat_id = conn.execute(
+            text("SELECT chat_id FROM files WHERE id = :fid"),
             {"fid": file_id},
-        ).fetchall()
+        ).scalar()
+
+        if chat_id:
+            attachments = conn.execute(
+                text("""
+                    SELECT a.id, a.original_name, a.storage_path, a.file_id, f.chat_id
+                    FROM attachments a
+                    JOIN files f ON a.file_id = f.id
+                    WHERE f.chat_id = :cid
+                      AND a.original_name ILIKE '%%.pdf'
+                """),
+                {"cid": chat_id},
+            ).fetchall()
+        else:
+            attachments = conn.execute(
+                text("""
+                    SELECT a.id, a.original_name, a.storage_path, a.file_id, f.chat_id
+                    FROM attachments a
+                    JOIN files f ON a.file_id = f.id
+                    WHERE a.file_id = :fid
+                      AND a.original_name ILIKE '%%.pdf'
+                """),
+                {"fid": file_id},
+            ).fetchall()
 
     if not attachments:
         return {"message": "No PDF attachments found", "indexed": 0}
@@ -67,12 +85,13 @@ def rag_index(file_id: int):
     indexed_count = 0
 
     for att in attachments:
-        chat_id = att.chat_id
-        file_path = str(STORAGE_DIR / f"chat_{chat_id}" / att.storage_path)
+        att_file_id = att.file_id
+        chat_id_val = att.chat_id
+        file_path = str(STORAGE_DIR / f"chat_{chat_id_val}" / att.storage_path)
         # index_attachment handles Supabase fallback if file not on disk
         try:
             chunks = index_attachment(
-                engine, att.id, file_id, att.original_name, file_path
+                engine, att.id, att_file_id, att.original_name, file_path
             )
             total_chunks += chunks
             if chunks > 0:

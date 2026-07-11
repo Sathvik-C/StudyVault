@@ -221,35 +221,72 @@ def index_attachment(engine, attachment_id: int, file_id: int,
 
 
 def get_index_status(engine, file_id: int) -> dict:
-    """Get indexing status for a file upload."""
+    """Get indexing status for a file upload (scoped to the entire chat)."""
     with engine.begin() as conn:
-        total_attachments = conn.execute(
-            text("""
-                SELECT COUNT(*) FROM attachments
-                WHERE file_id = :fid
-                  AND original_name ILIKE '%%.pdf'
-            """),
+        # Resolve chat_id to scope across all files in the same chat
+        chat_id = conn.execute(
+            text("SELECT chat_id FROM files WHERE id = :fid"),
             {"fid": file_id},
-        ).scalar() or 0
+        ).scalar()
 
-        indexed_attachments = conn.execute(
-            text("""
-                SELECT COUNT(DISTINCT attachment_id) FROM document_chunks
-                WHERE file_id = :fid
-            """),
-            {"fid": file_id},
-        ).scalar() or 0
+        if chat_id:
+            # Count across ALL file_ids in this chat
+            total_attachments = conn.execute(
+                text("""
+                    SELECT COUNT(*) FROM attachments a
+                    JOIN files f ON a.file_id = f.id
+                    WHERE f.chat_id = :cid
+                      AND a.original_name ILIKE '%%.pdf'
+                """),
+                {"cid": chat_id},
+            ).scalar() or 0
 
-        total_chunks = conn.execute(
-            text("SELECT COUNT(*) FROM document_chunks WHERE file_id = :fid"),
-            {"fid": file_id},
-        ).scalar() or 0
+            indexed_attachments = conn.execute(
+                text("""
+                    SELECT COUNT(DISTINCT dc.attachment_id) FROM document_chunks dc
+                    JOIN files f ON dc.file_id = f.id
+                    WHERE f.chat_id = :cid
+                """),
+                {"cid": chat_id},
+            ).scalar() or 0
+
+            total_chunks = conn.execute(
+                text("""
+                    SELECT COUNT(*) FROM document_chunks dc
+                    JOIN files f ON dc.file_id = f.id
+                    WHERE f.chat_id = :cid
+                """),
+                {"cid": chat_id},
+            ).scalar() or 0
+        else:
+            # Fallback to single file_id
+            total_attachments = conn.execute(
+                text("""
+                    SELECT COUNT(*) FROM attachments
+                    WHERE file_id = :fid
+                      AND original_name ILIKE '%%.pdf'
+                """),
+                {"fid": file_id},
+            ).scalar() or 0
+
+            indexed_attachments = conn.execute(
+                text("""
+                    SELECT COUNT(DISTINCT attachment_id) FROM document_chunks
+                    WHERE file_id = :fid
+                """),
+                {"fid": file_id},
+            ).scalar() or 0
+
+            total_chunks = conn.execute(
+                text("SELECT COUNT(*) FROM document_chunks WHERE file_id = :fid"),
+                {"fid": file_id},
+            ).scalar() or 0
 
     return {
         "total_pdf_attachments": total_attachments,
         "indexed_attachments": indexed_attachments,
         "total_chunks": total_chunks,
-        "fully_indexed": total_attachments == indexed_attachments,
+        "fully_indexed": total_attachments > 0 and total_attachments == indexed_attachments,
     }
 
 
@@ -276,17 +313,34 @@ def retrieve_chunks(engine, question: str, file_id: int,
         return []
     query_vec = np.asarray(q_emb[0], dtype=np.float64)
 
-    # Fetch all chunks for this file
+    # Fetch all chunks for this chat (across all file_ids)
     with engine.begin() as conn:
-        rows = conn.execute(
-            text("""
-                SELECT id, content, embedding, page_number, source_name,
-                       attachment_id
-                FROM document_chunks
-                WHERE file_id = :fid
-            """),
+        chat_id = conn.execute(
+            text("SELECT chat_id FROM files WHERE id = :fid"),
             {"fid": file_id},
-        ).fetchall()
+        ).scalar()
+
+        if chat_id:
+            rows = conn.execute(
+                text("""
+                    SELECT dc.id, dc.content, dc.embedding, dc.page_number,
+                           dc.source_name, dc.attachment_id
+                    FROM document_chunks dc
+                    JOIN files f ON dc.file_id = f.id
+                    WHERE f.chat_id = :cid
+                """),
+                {"cid": chat_id},
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                text("""
+                    SELECT id, content, embedding, page_number, source_name,
+                           attachment_id
+                    FROM document_chunks
+                    WHERE file_id = :fid
+                """),
+                {"fid": file_id},
+            ).fetchall()
 
     if not rows:
         return []
