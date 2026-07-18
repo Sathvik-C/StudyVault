@@ -23,18 +23,30 @@ HF_API_TOKEN = os.getenv("HF_API_TOKEN", "")
 HF_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 EMBED_DIM = 384
 
-# Multiple endpoints to try — fallback for DNS resolution issues
-_HF_ENDPOINTS = [
-    f"https://api-inference.huggingface.co/pipeline/feature-extraction/{HF_MODEL}",
-    f"https://api-inference.huggingface.co/models/{HF_MODEL}",
-    f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}",
-]
-
 _LAST_API_ERROR: str | None = None
 _LAST_ERROR_AT = 0.0
 _RETRY_SECONDS = 10  # Reduced from 30s — DNS failures are often short-lived
 _MAX_RETRIES = 3
 _RETRY_BACKOFF = 2   # seconds base for exponential backoff
+
+
+def _get_hf_endpoints(texts: list[str]) -> list[dict]:
+    """Build endpoint configs with per-endpoint payloads."""
+    return [
+        {
+            "url": f"https://api-inference.huggingface.co/pipeline/feature-extraction/{HF_MODEL}",
+            "payload": {"inputs": texts, "options": {"wait_for_model": True}},
+        },
+        {
+            "url": f"https://api-inference.huggingface.co/models/{HF_MODEL}",
+            "payload": {"inputs": texts, "options": {"wait_for_model": True}},
+        },
+        {
+            # Router endpoint — simpler payload, no `options` support
+            "url": f"https://router.huggingface.co/hf-inference/pipeline/feature-extraction/{HF_MODEL}",
+            "payload": {"inputs": texts},
+        },
+    ]
 
 
 def _embed_via_hf_api(texts: list[str]) -> np.ndarray | None:
@@ -57,14 +69,18 @@ def _embed_via_hf_api(texts: list[str]) -> np.ndarray | None:
         return None
 
     headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-    payload = {"inputs": texts, "options": {"wait_for_model": True}}
+    endpoints = _get_hf_endpoints(texts)
 
     last_error = None
-    for endpoint in _HF_ENDPOINTS:
+    for ep in endpoints:
+        url = ep["url"]
+        payload = ep["payload"]
+        label = url.split("/")[2]  # domain for logging
+
         for attempt in range(_MAX_RETRIES):
             try:
                 resp = requests.post(
-                    endpoint, headers=headers, json=payload, timeout=30
+                    url, headers=headers, json=payload, timeout=30
                 )
                 resp.raise_for_status()
                 embeddings = resp.json()
@@ -73,11 +89,11 @@ def _embed_via_hf_api(texts: list[str]) -> np.ndarray | None:
                 arr = np.array(embeddings, dtype=np.float32)
                 if arr.ndim == 2 and arr.shape[0] == len(texts):
                     _LAST_API_ERROR = None
-                    logger.debug("HF embedding succeeded via %s (attempt %d)", endpoint, attempt + 1)
+                    logger.debug("HF embedding succeeded via %s (attempt %d)", label, attempt + 1)
                     return arr
 
                 # Unexpected shape — try next endpoint
-                logger.warning("HF API returned unexpected shape %s from %s", arr.shape, endpoint)
+                logger.warning("HF API returned unexpected shape %s from %s", arr.shape, label)
                 break
 
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
@@ -85,19 +101,20 @@ def _embed_via_hf_api(texts: list[str]) -> np.ndarray | None:
                 last_error = e
                 wait = _RETRY_BACKOFF * (2 ** attempt)
                 logger.info(
-                    "HF API network error (attempt %d/%d, endpoint %s): %s — retrying in %ds",
-                    attempt + 1, _MAX_RETRIES, endpoint.split("/")[2], type(e).__name__, wait
+                    "HF API network error (attempt %d/%d, %s): %s — retrying in %ds",
+                    attempt + 1, _MAX_RETRIES, label, type(e).__name__, wait
                 )
                 time.sleep(wait)
 
             except Exception as e:
                 # HTTP errors (401, 503, etc.) — don't retry, try next endpoint
                 last_error = e
-                logger.warning("HF API error from %s: %s", endpoint.split("/")[2], e)
+                logger.warning("HF API error from %s: %s", label, e)
                 break
 
     # All endpoints and retries exhausted
     _LAST_API_ERROR = str(last_error) if last_error else "All HF endpoints failed"
+
     _LAST_ERROR_AT = time.time()
     logger.warning("HF Inference API unavailable after trying all endpoints: %s", _LAST_API_ERROR)
     return None
