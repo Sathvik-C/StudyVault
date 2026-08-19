@@ -583,7 +583,7 @@ RULES:
     try:
         for iteration in range(4):
             response = client.chat.completions.create(
-                model="qwen/qwen3-32b",
+                model="qwen/qwen3.6-27b",
                 messages=messages,
                 temperature=0.2,
                 max_tokens=1500
