@@ -504,7 +504,7 @@ RESPONSE FORMATTING:
 # ── 7. Agent Loop ────────────────────────────────────────────
 
 def _parse_action(text_content: str) -> Optional[dict]:
-    """Try to extract a JSON action block from the LLM response."""
+    """Try to extract a JSON action block or plain text action block from the LLM response."""
     import re
     # Look for ```json ... ``` or ```action ... ``` blocks
     patterns = [
@@ -519,6 +519,19 @@ def _parse_action(text_content: str) -> Optional[dict]:
                 return json.loads(m.group(1).strip())
             except json.JSONDecodeError:
                 continue
+
+    # Also check for plain text key-value format (e.g., Action: search_files, Subject: Mathematics, etc.)
+    action_match = re.search(r'(?:Action|Tool):\s*`?([a-zA-Z0-9_]+)`?', text_content, re.IGNORECASE)
+    if action_match:
+        act = action_match.group(1).strip()
+        result = {"action": act}
+        # Extract common fields
+        for field in ["query", "category", "subject", "keyword"]:
+            field_match = re.search(rf'{field}:\s*["\'`]?([^"\n\r\'`]+)["\'`]?', text_content, re.IGNORECASE)
+            if field_match:
+                result[field] = field_match.group(1).strip()
+        return result
+
     return None
 
 
@@ -586,13 +599,13 @@ RULES:
                 model="qwen/qwen3.6-27b",
                 messages=messages,
                 temperature=0.2,
-                max_tokens=1500
+                max_tokens=3000
             )
 
             reply = response.choices[0].message.content or ""
-            # Strip Qwen3 chain-of-thought think blocks if present
+            # Strip Qwen3 chain-of-thought think blocks if present (handles unclosed think tags as well)
             import re as _re
-            reply = _re.sub(r'<think>.*?</think>', '', reply, flags=_re.DOTALL).strip()
+            reply = _re.sub(r'<think>.*?(?:</think>|$)', '', reply, flags=_re.DOTALL).strip()
             messages.append({"role": "assistant", "content": reply})
 
             # Try to parse a tool action from the reply
