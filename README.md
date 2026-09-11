@@ -208,6 +208,4 @@ Each file also gets a **subject** (e.g., Mathematics, Data Structures, Python) a
 
 ---
 
-## 📄 License
 
-MIT
