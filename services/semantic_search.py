@@ -192,7 +192,8 @@ def semantic_search(engine, q: str, file_id: int | None = None, limit: int = 50)
                 SELECT id, file_id, original_name, storage_path, category, subject,
                        subcategory, note, tags
                 FROM attachments
-                WHERE original_name IS NOT NULL {file_filter}
+                WHERE original_name IS NOT NULL 
+                  AND original_name NOT LIKE '.keep%' {file_filter}
                 ORDER BY id DESC
                 LIMIT :file_pool_limit
                 """

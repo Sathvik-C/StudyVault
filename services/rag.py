@@ -384,7 +384,7 @@ import json
 def search_files(engine, file_id: int, category: str = None,
                  subject: str = None, keyword: str = None) -> list[dict]:
     """Search for files matching the given criteria with fuzzy matching."""
-    conditions = ["file_id = :fid"]
+    conditions = ["file_id = :fid", "original_name NOT LIKE '.keep%'"]
     params = {"fid": file_id}
 
     if category:
