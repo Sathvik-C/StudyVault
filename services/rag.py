@@ -596,6 +596,7 @@ RULES:
     # Active models on your Groq key: openai/gpt-oss-120b (high capacity), fallback to qwen/qwen3.6-27b
     PRIMARY_MODEL = os.getenv("RAG_MODEL", "openai/gpt-oss-120b")
     FALLBACK_MODEL = "qwen/qwen3.6-27b"
+    model_used = PRIMARY_MODEL
 
     try:
         for iteration in range(4):
@@ -607,6 +608,7 @@ RULES:
                     temperature=0.2,
                     max_tokens=800
                 )
+                model_used = model_to_use
             except Exception as call_err:
                 if ("429" in str(call_err) or "404" in str(call_err)) and model_to_use != FALLBACK_MODEL:
                     logger.warning("Error with %s: %s, falling back to %s", model_to_use, call_err, FALLBACK_MODEL)
@@ -616,8 +618,10 @@ RULES:
                         temperature=0.2,
                         max_tokens=600
                     )
+                    model_used = FALLBACK_MODEL
                 else:
                     raise call_err
+            logger.info("RAG iteration %d generated with model: %s", iteration + 1, model_used)
 
             msg_obj = response.choices[0].message
             content_text = msg_obj.content or ""
@@ -729,6 +733,7 @@ RULES:
         "answer": final_answer or "I couldn't generate an answer.",
         "sources": unique_sources,
         "chunks_used": chunks_used,
+        "model_used": model_used,
     }
 
 
