@@ -707,20 +707,35 @@ async def custom_upload(
     file_hash = h.hexdigest()
     storage_rel = dest_path.relative_to(chat_root)
 
+    # ── Upload to Supabase Storage if configured ──────────
+    sb_key = None
+    try:
+        from services.storage import is_available as sb_available, upload_file as sb_upload
+        if sb_available():
+            sb_storage_key = f"chat_{chat_id}/{storage_rel}".replace("\\", "/")
+            if sb_upload(dest_path, sb_storage_key):
+                sb_key = sb_storage_key
+                logger.info("Custom upload %s successfully uploaded to Supabase as %s", original_name, sb_key)
+            else:
+                logger.warning("Custom upload %s failed to upload to Supabase", original_name)
+    except Exception as sb_err:
+        logger.error("Supabase upload exception for %s: %s", original_name, sb_err)
+
     with engine.begin() as conn:
         aid = conn.execute(
             text("""
                 INSERT INTO attachments
                     (file_id, original_name, storage_path, category, subject,
-                     subcategory, classification_method, file_hash, size_bytes)
+                     subcategory, classification_method, file_hash, size_bytes, supabase_key)
                 VALUES
-                    (:fid, :name, :path, :cat, :sub, :subcat, 'manual', :fhash, :sz)
+                    (:fid, :name, :path, :cat, :sub, :subcat, 'manual', :fhash, :sz, :sb_key)
                 ON CONFLICT (file_hash) DO UPDATE SET
                     file_id = EXCLUDED.file_id,
                     storage_path = EXCLUDED.storage_path,
                     category = EXCLUDED.category,
                     subject = EXCLUDED.subject,
-                    subcategory = EXCLUDED.subcategory
+                    subcategory = EXCLUDED.subcategory,
+                    supabase_key = COALESCE(EXCLUDED.supabase_key, attachments.supabase_key)
                 RETURNING id
             """),
             {
@@ -728,6 +743,7 @@ async def custom_upload(
                 "path": str(storage_rel), "cat": category,
                 "sub": subject, "subcat": subcategory,
                 "fhash": file_hash, "sz": size,
+                "sb_key": sb_key,
             },
         ).scalar()
 
@@ -742,4 +758,4 @@ async def custom_upload(
             {"fid": db_file_id, "name": subject},
         )
 
-    return {"attachment_id": aid, "path": str(storage_rel)}
+    return {"attachment_id": aid, "path": str(storage_rel), "supabase_key": sb_key}
