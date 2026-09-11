@@ -593,17 +593,34 @@ RULES:
     sources_to_return = []
     chunks_used = 0
 
+    # Primary model with higher OTPM on Groq; fallback to lightweight 8b on rate limit
+    PRIMARY_MODEL = os.getenv("RAG_MODEL", "llama-3.3-70b-versatile")
+    FALLBACK_MODEL = "llama-3.1-8b-instant"
+
     try:
         for iteration in range(4):
-            response = client.chat.completions.create(
-                model="qwen/qwen3.6-27b",
-                messages=messages,
-                temperature=0.2,
-                max_tokens=3000
-            )
+            model_to_use = PRIMARY_MODEL
+            try:
+                response = client.chat.completions.create(
+                    model=model_to_use,
+                    messages=messages,
+                    temperature=0.2,
+                    max_tokens=1024
+                )
+            except Exception as call_err:
+                if "429" in str(call_err) and model_to_use != FALLBACK_MODEL:
+                    logger.warning("Rate limit hit on %s, falling back to %s", model_to_use, FALLBACK_MODEL)
+                    response = client.chat.completions.create(
+                        model=FALLBACK_MODEL,
+                        messages=messages,
+                        temperature=0.2,
+                        max_tokens=800
+                    )
+                else:
+                    raise call_err
 
             reply = response.choices[0].message.content or ""
-            # Strip Qwen3 chain-of-thought think blocks if present (handles unclosed think tags as well)
+            # Strip reasoning/chain-of-thought think blocks if present
             import re as _re
             reply = _re.sub(r'<think>.*?(?:</think>|$)', '', reply, flags=_re.DOTALL).strip()
             messages.append({"role": "assistant", "content": reply})
