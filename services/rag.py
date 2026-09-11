@@ -593,9 +593,9 @@ RULES:
     sources_to_return = []
     chunks_used = 0
 
-    # Available models on your Groq tier: qwen/qwen3.6-27b, qwen/qwen3.8-27b, openai/gpt-oss-20b
-    PRIMARY_MODEL = os.getenv("RAG_MODEL", "qwen/qwen3.6-27b")
-    FALLBACK_MODEL = "qwen/qwen3.8-27b"
+    # Active models on your Groq key: openai/gpt-oss-120b (high capacity), fallback to qwen/qwen3.6-27b
+    PRIMARY_MODEL = os.getenv("RAG_MODEL", "openai/gpt-oss-120b")
+    FALLBACK_MODEL = "qwen/qwen3.6-27b"
 
     try:
         for iteration in range(4):
@@ -605,28 +605,46 @@ RULES:
                     model=model_to_use,
                     messages=messages,
                     temperature=0.2,
-                    max_tokens=600
+                    max_tokens=800
                 )
             except Exception as call_err:
-                if "429" in str(call_err) and model_to_use != FALLBACK_MODEL:
-                    logger.warning("Rate limit hit on %s, trying %s", model_to_use, FALLBACK_MODEL)
+                if ("429" in str(call_err) or "404" in str(call_err)) and model_to_use != FALLBACK_MODEL:
+                    logger.warning("Error with %s: %s, falling back to %s", model_to_use, call_err, FALLBACK_MODEL)
                     response = client.chat.completions.create(
                         model=FALLBACK_MODEL,
                         messages=messages,
                         temperature=0.2,
-                        max_tokens=500
+                        max_tokens=600
                     )
                 else:
                     raise call_err
 
-            reply = response.choices[0].message.content or ""
-            # Strip reasoning/chain-of-thought think blocks if present
-            import re as _re
-            reply = _re.sub(r'<think>.*?(?:</think>|$)', '', reply, flags=_re.DOTALL).strip()
-            messages.append({"role": "assistant", "content": reply})
+            msg_obj = response.choices[0].message
+            content_text = msg_obj.content or ""
+            reasoning_text = getattr(msg_obj, "reasoning", "") or ""
 
-            # Try to parse a tool action from the reply
-            action = _parse_action(reply)
+            # Check for tool action in raw content OR reasoning BEFORE stripping think tags
+            combined_raw = content_text + "\n" + reasoning_text if reasoning_text else content_text
+            action = _parse_action(combined_raw)
+
+            # Clean display reply: prefer text after </think>, or clean content, or fallback to reasoning
+            import re as _re
+            if "</think>" in content_text:
+                reply = content_text.split("</think>")[-1].strip()
+            else:
+                reply = _re.sub(r'<think>.*?(?:</think>|$)', '', content_text, flags=_re.DOTALL).strip()
+
+            # If reply is empty because all output was generated in thinking/reasoning, extract it
+            if not reply and not action:
+                if reasoning_text:
+                    reply = reasoning_text.strip()
+                else:
+                    think_m = _re.search(r'<think>(.*?)(?:</think>|$)', content_text, flags=_re.DOTALL)
+                    if think_m:
+                        t = think_m.group(1).strip()
+                        reply = _re.sub(r"^Here\x27s a thinking process:?\s*", "", t, flags=_re.IGNORECASE).strip()
+
+            messages.append({"role": "assistant", "content": reply or content_text})
 
             if action and "action" in action:
                 action_name = action["action"]
