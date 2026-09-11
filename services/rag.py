@@ -593,9 +593,9 @@ RULES:
     sources_to_return = []
     chunks_used = 0
 
-    # Primary model with higher OTPM on Groq; fallback to lightweight 8b on rate limit
-    PRIMARY_MODEL = os.getenv("RAG_MODEL", "llama-3.3-70b-versatile")
-    FALLBACK_MODEL = "llama-3.1-8b-instant"
+    # Available models on your Groq tier: qwen/qwen3.6-27b, qwen/qwen3.8-27b, openai/gpt-oss-20b
+    PRIMARY_MODEL = os.getenv("RAG_MODEL", "qwen/qwen3.6-27b")
+    FALLBACK_MODEL = "qwen/qwen3.8-27b"
 
     try:
         for iteration in range(4):
@@ -605,16 +605,16 @@ RULES:
                     model=model_to_use,
                     messages=messages,
                     temperature=0.2,
-                    max_tokens=1024
+                    max_tokens=600
                 )
             except Exception as call_err:
                 if "429" in str(call_err) and model_to_use != FALLBACK_MODEL:
-                    logger.warning("Rate limit hit on %s, falling back to %s", model_to_use, FALLBACK_MODEL)
+                    logger.warning("Rate limit hit on %s, trying %s", model_to_use, FALLBACK_MODEL)
                     response = client.chat.completions.create(
                         model=FALLBACK_MODEL,
                         messages=messages,
                         temperature=0.2,
-                        max_tokens=800
+                        max_tokens=500
                     )
                 else:
                     raise call_err
