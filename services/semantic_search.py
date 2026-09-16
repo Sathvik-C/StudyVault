@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # ── HF Inference API config ──────────────────────────────────
 HF_API_TOKEN = os.getenv("HF_API_TOKEN", "")
-HF_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+HF_MODEL = os.getenv("HF_EMBED_MODEL", "BAAI/bge-small-en-v1.5")
 EMBED_DIM = 384
 
 _LAST_API_ERROR: str | None = None
@@ -31,18 +31,13 @@ _RETRY_BACKOFF = 2   # seconds base for exponential backoff
 
 
 def _get_hf_endpoints(texts: list[str]) -> list[dict]:
-    """Build endpoint configs with per-endpoint payloads."""
+    """Build endpoint configs with active HuggingFace router endpoints."""
     return [
         {
-            "url": f"https://api-inference.huggingface.co/pipeline/feature-extraction/{HF_MODEL}",
-            "payload": {"inputs": texts, "options": {"wait_for_model": True}},
+            "url": f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}",
+            "payload": {"inputs": texts},
         },
         {
-            "url": f"https://api-inference.huggingface.co/models/{HF_MODEL}",
-            "payload": {"inputs": texts, "options": {"wait_for_model": True}},
-        },
-        {
-            # Router endpoint — simpler payload, no `options` support
             "url": f"https://router.huggingface.co/hf-inference/pipeline/feature-extraction/{HF_MODEL}",
             "payload": {"inputs": texts},
         },

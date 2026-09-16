@@ -767,6 +767,15 @@ async def custom_upload(
                 {"fid": db_file_id, "name": subject},
             )
 
+        # Auto-index PDF for RAG if it is a PDF file
+        if original_name.lower().endswith(".pdf"):
+            try:
+                from services.rag import index_attachment
+                index_attachment(engine, aid, db_file_id, original_name, str(dest_path))
+                logger.info("Auto-indexed PDF %s for RAG (aid=%s)", original_name, aid)
+            except Exception as idx_err:
+                logger.warning("Could not auto-index PDF %s: %s", original_name, idx_err)
+
         return {"attachment_id": aid, "path": str(storage_rel), "supabase_key": sb_key}
     except HTTPException:
         raise
