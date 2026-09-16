@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import hashlib
+import logging
 import re
 import shutil
 from collections import Counter
@@ -12,6 +13,8 @@ from pydantic import BaseModel
 from db.connection import get_engine
 from models.config import STORAGE_DIR
 from services.important import extract_deadline_from_text
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/messages", tags=["Messages"])
 engine = get_engine()
@@ -677,85 +680,96 @@ async def custom_upload(
     subject = _safe(subject)
     subcategory = _safe(subcategory) if subcategory.strip() else None
 
-    with engine.begin() as conn:
-        row = conn.execute(
-            text("SELECT id, chat_id FROM files WHERE id = :fid"),
-            {"fid": file_id},
-        ).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Upload session not found")
-        db_file_id, chat_id = row.id, row.chat_id
-
-    chat_root = STORAGE_DIR / f"chat_{chat_id}"
-    dest_dir = chat_root / category / subject
-    if subcategory:
-        dest_dir = dest_dir / subcategory
-    dest_dir.mkdir(parents=True, exist_ok=True)
-
-    original_name = Path(file.filename).name or "upload"
-    dest_path = _unique_dest(dest_dir, original_name)
-
-    # Stream-save the file
-    h = hashlib.sha256()
-    size = 0
-    with open(dest_path, "wb") as out:
-        while chunk := await file.read(1024 * 1024):
-            size += len(chunk)
-            h.update(chunk)
-            out.write(chunk)
-
-    file_hash = h.hexdigest()
-    storage_rel = dest_path.relative_to(chat_root)
-
-    # ── Upload to Supabase Storage if configured ──────────
-    sb_key = None
     try:
-        from services.storage import is_available as sb_available, upload_file as sb_upload
-        if sb_available():
-            sb_storage_key = f"chat_{chat_id}/{storage_rel}".replace("\\", "/")
-            if sb_upload(dest_path, sb_storage_key):
-                sb_key = sb_storage_key
-                logger.info("Custom upload %s successfully uploaded to Supabase as %s", original_name, sb_key)
-            else:
-                logger.warning("Custom upload %s failed to upload to Supabase", original_name)
-    except Exception as sb_err:
-        logger.error("Supabase upload exception for %s: %s", original_name, sb_err)
+        with engine.begin() as conn:
+            row = conn.execute(
+                text("SELECT id, chat_id FROM files WHERE id = :fid"),
+                {"fid": file_id},
+            ).fetchone()
+            if not row:
+                row = conn.execute(text("SELECT id, chat_id FROM files WHERE chat_name = (SELECT chat_name FROM chats ORDER BY updated_at DESC LIMIT 1) ORDER BY id DESC")).fetchone()
+            if not row:
+                row = conn.execute(text("SELECT id, chat_id FROM files ORDER BY id DESC LIMIT 1")).fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Upload session not found. Please re-upload or select a chat.")
+            db_file_id = row[0]
+            chat_id = row[1] if row[1] else db_file_id
 
-    with engine.begin() as conn:
-        aid = conn.execute(
-            text("""
-                INSERT INTO attachments
-                    (file_id, original_name, storage_path, category, subject,
-                     subcategory, classification_method, file_hash, size_bytes, supabase_key)
-                VALUES
-                    (:fid, :name, :path, :cat, :sub, :subcat, 'manual', :fhash, :sz, :sb_key)
-                ON CONFLICT (file_hash) DO UPDATE SET
-                    file_id = EXCLUDED.file_id,
-                    storage_path = EXCLUDED.storage_path,
-                    category = EXCLUDED.category,
-                    subject = EXCLUDED.subject,
-                    subcategory = EXCLUDED.subcategory,
-                    supabase_key = COALESCE(EXCLUDED.supabase_key, attachments.supabase_key)
-                RETURNING id
-            """),
-            {
-                "fid": db_file_id, "name": original_name,
-                "path": str(storage_rel), "cat": category,
-                "sub": subject, "subcat": subcategory,
-                "fhash": file_hash, "sz": size,
-                "sb_key": sb_key,
-            },
-        ).scalar()
+        chat_root = STORAGE_DIR / f"chat_{chat_id}"
+        dest_dir = chat_root / category / subject
+        if subcategory:
+            dest_dir = dest_dir / subcategory
+        dest_dir.mkdir(parents=True, exist_ok=True)
 
-        # update subjects registry
-        conn.execute(
-            text("""
-                INSERT INTO subjects (file_id, name, file_count)
-                VALUES (:fid, :name, 1)
-                ON CONFLICT (file_id, name)
-                DO UPDATE SET file_count = subjects.file_count + 1
-            """),
-            {"fid": db_file_id, "name": subject},
-        )
+        original_name = Path(file.filename).name or "upload"
+        dest_path = _unique_dest(dest_dir, original_name)
 
-    return {"attachment_id": aid, "path": str(storage_rel), "supabase_key": sb_key}
+        # Stream-save the file
+        h = hashlib.sha256()
+        size = 0
+        with open(dest_path, "wb") as out:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                h.update(chunk)
+                out.write(chunk)
+
+        file_hash = h.hexdigest()
+        storage_rel = dest_path.relative_to(chat_root)
+
+        # ── Upload to Supabase Storage if configured ──────────
+        sb_key = None
+        try:
+            from services.storage import is_available as sb_available, upload_file as sb_upload
+            if sb_available():
+                sb_storage_key = f"chat_{chat_id}/{storage_rel}".replace("\\", "/")
+                if sb_upload(dest_path, sb_storage_key):
+                    sb_key = sb_storage_key
+                    logger.info("Custom upload %s successfully uploaded to Supabase as %s", original_name, sb_key)
+                else:
+                    logger.warning("Custom upload %s failed to upload to Supabase", original_name)
+        except Exception as sb_err:
+            logger.error("Supabase upload exception for %s: %s", original_name, sb_err)
+
+        with engine.begin() as conn:
+            aid = conn.execute(
+                text("""
+                    INSERT INTO attachments
+                        (file_id, original_name, storage_path, category, subject,
+                         subcategory, classification_method, file_hash, size_bytes, supabase_key)
+                    VALUES
+                        (:fid, :name, :path, :cat, :sub, :subcat, 'manual', :fhash, :sz, :sb_key)
+                    ON CONFLICT (file_hash) DO UPDATE SET
+                        file_id = EXCLUDED.file_id,
+                        storage_path = EXCLUDED.storage_path,
+                        category = EXCLUDED.category,
+                        subject = EXCLUDED.subject,
+                        subcategory = EXCLUDED.subcategory,
+                        supabase_key = COALESCE(EXCLUDED.supabase_key, attachments.supabase_key)
+                    RETURNING id
+                """),
+                {
+                    "fid": db_file_id, "name": original_name,
+                    "path": str(storage_rel), "cat": category,
+                    "sub": subject, "subcat": subcategory,
+                    "fhash": file_hash, "sz": size,
+                    "sb_key": sb_key,
+                },
+            ).scalar()
+
+            # update subjects registry
+            conn.execute(
+                text("""
+                    INSERT INTO subjects (file_id, name, file_count)
+                    VALUES (:fid, :name, 1)
+                    ON CONFLICT (file_id, name)
+                    DO UPDATE SET file_count = subjects.file_count + 1
+                """),
+                {"fid": db_file_id, "name": subject},
+            )
+
+        return {"attachment_id": aid, "path": str(storage_rel), "supabase_key": sb_key}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("custom_upload error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Custom upload failed: {str(e)}")
