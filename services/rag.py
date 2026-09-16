@@ -302,10 +302,15 @@ def get_index_status(engine, file_id: int) -> dict:
 
 def _cosine_similarity(query_vec: np.ndarray, doc_matrix: np.ndarray) -> np.ndarray:
     """Cosine similarity between a query vector and a matrix of doc vectors."""
-    query_norm = np.linalg.norm(query_vec)
-    doc_norms = np.linalg.norm(doc_matrix, axis=1)
-    denom = np.maximum(doc_norms * max(query_norm, 1e-12), 1e-12)
-    return (doc_matrix @ query_vec) / denom
+    q_norm = np.linalg.norm(query_vec)
+    if q_norm < 1e-12:
+        return np.zeros(doc_matrix.shape[0], dtype=np.float64)
+    q_unit = query_vec / q_norm
+    d_norms = np.linalg.norm(doc_matrix, axis=1, keepdims=True)
+    d_norms = np.maximum(d_norms, 1e-12)
+    d_unit = doc_matrix / d_norms
+    scores = np.dot(d_unit, q_unit)
+    return np.nan_to_num(scores, nan=0.0, posinf=1.0, neginf=-1.0)
 
 
 def retrieve_chunks(engine, question: str, file_id: int,
@@ -432,27 +437,42 @@ def search_files(engine, file_id: int, category: str = None,
         if not kw_clean:
             kw_clean = keyword.lower()
             
-        kw_words = kw_clean.split()
+        kw_words = [w for w in kw_clean.split() if len(w) > 1]
         
         scored_results = []
         for res in results:
-            text_to_search = f"{res['filename']} {res['category']} {res['subject']} {res['storage_path']}".lower()
+            fn_lower = (res['filename'] or "").lower()
+            cat_lower = (res['category'] or "").lower()
+            sub_lower = (res['subject'] or "").lower()
+            sp_lower = (res['storage_path'] or "").lower()
+            text_to_search = " ".join([fn_lower, cat_lower, sub_lower, sp_lower])
             
             score = 0.0
-            # 1. Exact substring match
-            if kw_clean in text_to_search:
+            # 1. Exact substring match in filename
+            if kw_clean in fn_lower:
                 score = 1.0
-            # 2. All words present in any order
-            elif kw_words and all(w in text_to_search for w in kw_words):
+            # 2. Exact substring match anywhere
+            elif kw_clean in text_to_search:
+                score = 0.95
+            # 3. All keyword words present in filename
+            elif kw_words and all(w in fn_lower for w in kw_words):
                 score = 0.9
-            # 3. Fuzzy typo match using difflib
-            else:
-                score_name = difflib.SequenceMatcher(None, kw_clean, res['filename'].lower()).ratio()
-                score_subj = difflib.SequenceMatcher(None, kw_clean, (res['subject'] or "").lower()).ratio()
-                score_cat = difflib.SequenceMatcher(None, kw_clean, (res['category'] or "").lower()).ratio()
-                score = max(score_name, score_subj, score_cat)
+            # 4. All keyword words present in metadata
+            elif kw_words and all(w in text_to_search for w in kw_words):
+                score = 0.8
+            # 5. Fuzzy typo match only against filename tokens if keyword >= 4 chars
+            elif len(kw_clean) >= 4:
+                best_token_ratio = 0.0
+                tokens = re.split(r'[\s_\-\.]+', fn_lower)
+                for t in tokens:
+                    if len(t) >= 3:
+                        ratio = difflib.SequenceMatcher(None, kw_clean, t).ratio()
+                        if ratio > best_token_ratio:
+                            best_token_ratio = ratio
+                if best_token_ratio >= 0.75:
+                    score = best_token_ratio * 0.7
             
-            if score >= 0.4:  # Threshold for fuzzy match
+            if score >= 0.5:  # Only accept legitimate matches
                 scored_results.append((score, res))
                 
         # Sort by best match score descending
@@ -514,26 +534,31 @@ RESPONSE FORMATTING:
 def _parse_action(text_content: str) -> Optional[dict]:
     """Try to extract a JSON action block or plain text action block from the LLM response."""
     import re
-    # Look for ```json ... ``` or ```action ... ``` blocks
-    patterns = [
-        r'```(?:json|action)\s*\n(.*?)\n```',
-        r'```\s*\n(\{.*?\})\n```',
-        r'(\{"action"\s*:.*?\})',
-    ]
-    for pat in patterns:
-        m = re.search(pat, text_content, re.DOTALL)
-        if m:
-            try:
-                return json.loads(m.group(1).strip())
-            except json.JSONDecodeError:
-                continue
 
-    # Also check for plain text key-value format (e.g., Action: search_files, Subject: Mathematics, etc.)
+    # 1. Search for markdown code blocks or raw JSON containing "action" or "tool"
+    candidates = re.findall(r"(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})", text_content, re.DOTALL)
+    for c in candidates:
+        try:
+            d = json.loads(c.strip())
+            if isinstance(d, dict):
+                act = d.get("action") or d.get("tool")
+                if act:
+                    res = {"action": act}
+                    args = d.get("arguments")
+                    if isinstance(args, dict):
+                        res.update(args)
+                    for k, v in d.items():
+                        if k not in ("action", "tool", "arguments"):
+                            res[k] = v
+                    return res
+        except Exception:
+            continue
+
+    # 2. Plain text key-value format fallback (e.g. Action: search_files...)
     action_match = re.search(r'(?:Action|Tool):\s*`?([a-zA-Z0-9_]+)`?', text_content, re.IGNORECASE)
     if action_match:
         act = action_match.group(1).strip()
         result = {"action": act}
-        # Extract common fields
         for field in ["query", "category", "subject", "keyword"]:
             field_match = re.search(rf'{field}:\s*["\'`]?([^"\n\r\'`]+)["\'`]?', text_content, re.IGNORECASE)
             if field_match:
@@ -601,9 +626,9 @@ RULES:
     sources_to_return = []
     chunks_used = 0
 
-    # Active models on your Groq key: openai/gpt-oss-120b (high capacity), fallback to qwen/qwen3.6-27b
-    PRIMARY_MODEL = os.getenv("RAG_MODEL", "openai/gpt-oss-120b")
-    FALLBACK_MODEL = "qwen/qwen3.6-27b"
+    # Active models on your Groq key: qwen/qwen3.8-27b (reliable tool-calling JSON), fallback to openai/gpt-oss-120b
+    PRIMARY_MODEL = os.getenv("RAG_MODEL", "qwen/qwen3.8-27b")
+    FALLBACK_MODEL = "openai/gpt-oss-120b"
     model_used = PRIMARY_MODEL
 
     try:
