@@ -65,6 +65,14 @@ def extract_pdf_text(file_path: str) -> list[dict]:
 
             # PostgreSQL does not allow NUL characters in TEXT fields
             page_text = page_text.replace("\x00", "")
+
+            # Normalize fragmented glyphs (PDFs with 1 char per line / private unicode chars)
+            import re
+            page_text = re.sub(r"[\ue000-\uf8ff\xa0]", " ", page_text)
+            page_text = re.sub(r"(?<=\w)\n(?=\w)", "", page_text)
+            page_text = re.sub(r"[ \t]+", " ", page_text)
+            page_text = re.sub(r"\n\s*\n+", "\n\n", page_text).strip()
+
             if page_text:
                 pages.append({
                     "page_number": page_num + 1,
