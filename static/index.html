@@ -1719,8 +1719,8 @@
       <div class="panel" id="panel-dashboard"><div id="dashboardContent"></div></div>
       <div class="panel" id="panel-ask">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <h2 class="panel-title" style="margin:0">Ask AI <span style="font-size:12px; font-weight:normal; margin-left:10px; color:var(--muted)" id="ragStatusText">Checking indexing status...</span></h2>
-          <button class="btn-outline" onclick="forceRagIndex()" id="btnForceIndex" style="display:none">Index Documents</button>
+          <h2 class="panel-title" style="margin:0">Ask AI <span style="font-size:12px; font-weight:normal; margin-left:10px; color:var(--muted)" id="ragStatusText">Checking status...</span></h2>
+          <button class="btn-outline" onclick="forceRagIndex()" id="btnForceIndex" style="display:none; font-size:11px; padding:4px 10px;" title="Re-sync and index any new PDFs">🔄 Re-index</button>
         </div>
         <div id="ragChatArea" style="height: 50vh; overflow-y: auto; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 12px;">
           <div class="empty-state" id="ragEmptyState" style="margin:auto; border:none; padding:20px;">
@@ -3189,23 +3189,36 @@ async function loadRagStatus() {
     const forceBtn = document.getElementById('btnForceIndex');
     
     if (data.total_pdf_attachments === 0) {
-      statusText.innerHTML = 'No PDFs to index.';
+      statusText.innerHTML = 'No PDFs found';
       statusText.style.color = 'var(--muted)';
       input.disabled = true;
       btn.disabled = true;
-      forceBtn.style.display = 'none';
+      if (forceBtn) forceBtn.style.display = 'none';
     } else if (data.fully_indexed) {
-      statusText.innerHTML = `✅ ${data.indexed_attachments}/${data.total_pdf_attachments} PDFs indexed (${data.total_chunks} chunks)`;
+      statusText.innerHTML = `✅ Ready (${data.indexed_attachments} PDFs · ${data.total_chunks} chunks)`;
       statusText.style.color = 'var(--success)';
       input.disabled = false;
       btn.disabled = false;
-      forceBtn.style.display = 'none';
-    } else {
-      statusText.innerHTML = `⚠️ ${data.indexed_attachments}/${data.total_pdf_attachments} PDFs indexed. Questions may be missing context.`;
-      statusText.style.color = 'var(--warning)';
+      if (forceBtn) forceBtn.style.display = 'none';
+    } else if (data.indexed_attachments > 0) {
+      // Partial indexing - still allow asking questions without alarmist warnings
+      statusText.innerHTML = `✅ Ready (${data.indexed_attachments}/${data.total_pdf_attachments} indexed)`;
+      statusText.style.color = 'var(--success)';
       input.disabled = false;
       btn.disabled = false;
-      forceBtn.style.display = 'block';
+      if (forceBtn) {
+        forceBtn.style.display = 'inline-block';
+        forceBtn.innerText = '🔄 Sync Remaining';
+      }
+    } else {
+      statusText.innerHTML = `Indexing documents in background...`;
+      statusText.style.color = 'var(--accent)';
+      input.disabled = false;
+      btn.disabled = false;
+      if (forceBtn) {
+        forceBtn.style.display = 'inline-block';
+        forceBtn.innerText = '⚡ Index Now';
+      }
     }
   } catch (err) {
     console.error("RAG status error:", err);
@@ -3215,17 +3228,21 @@ async function loadRagStatus() {
 async function forceRagIndex() {
   if (!currentFileId) return;
   const forceBtn = document.getElementById('btnForceIndex');
-  forceBtn.disabled = true;
-  forceBtn.innerText = "Indexing...";
+  if (forceBtn) {
+    forceBtn.disabled = true;
+    forceBtn.innerText = "Indexing...";
+  }
   try {
     const res = await fetch(`${API}/rag/${currentFileId}/index`, { method: 'POST' });
     const data = await res.json();
-    showToast(data.message, 'success');
+    showToast(data.message || 'Indexing complete', 'success');
     loadRagStatus();
   } catch (err) {
     showToast('Indexing failed', 'error');
-    forceBtn.disabled = false;
-    forceBtn.innerText = "Index Documents";
+    if (forceBtn) {
+      forceBtn.disabled = false;
+      forceBtn.innerText = "🔄 Re-index";
+    }
   }
 }
 
